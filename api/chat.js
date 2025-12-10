@@ -1,6 +1,6 @@
 function withCORS(handler) {
   return async (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*'); // ok perché non usiamo cookie
+    res.setHeader('Access-Control-Allow-Origin', '*'); // ok perché niente cookie
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.status(204).end();
@@ -10,7 +10,11 @@ function withCORS(handler) {
 
 async function chatHandler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-  const debug = String(req.query?.debug || "").toLowerCase() === "1";
+
+  // <<< IMPORTANTE: su Vercel non c'è req.query, usiamo URL().searchParams >>>
+  const { searchParams } = new URL(req.url, 'http://localhost');
+  const debug = (searchParams.get('debug') === '1');
+
   const { message = "", history = [] } = req.body || {};
 
   const url = (process.env.CHATBASE_API_URL || "https://www.chatbase.co/api/v1/chat").trim();
@@ -19,7 +23,7 @@ async function chatHandler(req, res) {
 
   if (!url || !chatbotId || !key) {
     const msg = "Config mancante (env). Controlla URL/KEY/BOT_ID.";
-    return res.status(200).json({ answer: msg, ...(debug ? { _debug: { url, hasBot: !!chatbotId, hasKey: !!key } } : {}) });
+    return res.status(200).json({ answer: msg, _v: "dbg3", ...(debug ? { _debug: { url, hasBot: !!chatbotId, hasKey: !!key } } : {}) });
   }
 
   // Storia pulita: solo ruoli ammessi e contenuti non vuoti
@@ -46,9 +50,10 @@ async function chatHandler(req, res) {
 
     const raw = await r.text();
     if (!r.ok) {
-      // restituiamo info utili in _debug
+      // info utili solo se debug=1
       return res.status(200).json({
         answer: "Il servizio è momentaneamente non disponibile. Riprova tra poco.",
+        _v: "dbg3",
         ...(debug ? { _debug: { status: r.status, statusText: r.statusText, raw } } : {})
       });
     }
@@ -58,9 +63,9 @@ async function chatHandler(req, res) {
     if (!answer) answer = "Al momento non ho una risposta. Prova a riformulare in modo più specifico.";
     answer = answer.replace(/[\*\_`\#]/g, "").replace(/\s{2,}/g, " ").trim();
 
-    return res.status(200).json({ answer, ...(debug ? { _debug: { ok: true } } : {}) });
+    return res.status(200).json({ answer, _v: "dbg3", ...(debug ? { _debug: { ok: true } } : {}) });
   } catch (e) {
-    return res.status(200).json({ answer: "Il servizio è momentaneamente non disponibile. Riprova tra poco." });
+    return res.status(200).json({ answer: "Il servizio è momentaneamente non disponibile. Riprova tra poco.", _v: "dbg3" });
   }
 }
 

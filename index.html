@@ -31,19 +31,15 @@
   </div>
 
 <script type="module">
-  // Se la pagina è già sul dominio del deployment → usa percorsi relativi (niente CORS).
-  // Se la pagina è aperta da un altro dominio (anteprima, Wix, ecc.) → usa URL assoluto.
-  const PROD_BASE = 'https://lawy-n1o83p7jp-leos-projects-abf1137f.vercel.app';
-  const API_BASE = location.hostname.includes('vercel.app') && location.hostname.includes('leos-projects-abf1137f')
-    ? ''              // stesso dominio → relative path: /api/...
-    : PROD_BASE;      // altro dominio → chiama il deployment con URL assoluto
+  // CHIAMATE RELATIVE: niente dominio, così evitiamo CORS e mismatch
+  const API_BASE = '';  // <-- IMPORTANTE: stringa vuota
 
   const $ = id => document.getElementById(id);
   const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
   const askBtn = $("ask"), qEl = $("q");
   const history = [];
 
-  // Avatar opzionale (si attiverà quando avrai HEYGEN_API_KEY)
+  // Avatar opzionale (si attiverà domani quando avrai HEYGEN_API_KEY)
   const MAX_SESSION_MS = 9 * 60 * 1000;
   let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
@@ -54,7 +50,7 @@
 
   async function initAvatarIfAvailable() {
     try {
-      const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST", mode: "cors", cache: "no-store" });
+      const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
       const j = await r.json();
       if (!r.ok || !j?.token) throw new Error("no_token");
 
@@ -89,21 +85,17 @@
     await initAvatarIfAvailable();
   }
 
-  // --- PING diagnostico all’avvio: ci dice subito se la route è raggiungibile ---
+  // PING diagnostico — su GET deve tornare 405 (endpoint esiste)
   (async () => {
     try {
-      const ping = await fetch(`${API_BASE}/api/chat`, {
-        method: "GET", mode: "cors", cache: "no-store"
-      });
-      // su GET la funzione risponde 405: è ok, vuol dire che l’endpoint esiste
+      const ping = await fetch(`${API_BASE}/api/chat`, { method: "GET" });
       if (ping.status !== 405) console.warn("Ping /api/chat atteso 405, ottenuto:", ping.status);
     } catch (e) {
-      console.error("Ping /api/chat fallito:", e);
-      statusEl.textContent = "Errore di rete verso l'API. Controlla dominio/API_BASE.";
+      statusEl.textContent = "Errore di rete verso l'API (ping fallito). Ricarica la pagina su questo dominio.";
     }
   })();
 
-  // Invio domanda (funziona anche senza avatar)
+  // Invio domanda
   askBtn.addEventListener("click", async () => {
     const msg = qEl.value.trim();
     if (!msg) return;
@@ -114,8 +106,6 @@
     try {
       const r = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
-        mode: "cors",           // esplicito
-        cache: "no-store",      // niente cache
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg, history: history.slice(-6) })
       });

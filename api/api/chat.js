@@ -2,6 +2,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   const { message = "", history = [] } = req.body || {};
 
+  // Contesto breve dai turni recenti
   const turns = (history || []).slice(-6);
   const system_prompt =
     "Sei un tutor su [TEMA]. Rispondi SEMPRE in ITALIANO, chiaro, 2–3 frasi, SOLO TESTO. " +
@@ -14,20 +15,20 @@ export default async function handler(req, res) {
     { role: "user", content: String(message) }
   ];
 
-  const base = (process.env.CHATBASE_API_URL || "").replace(/\/$/, "");
-  const route = process.env.CHATBASE_ROUTE || "";
-  const url = `${base}${route}`;
+  const url = process.env.CHATBASE_API_URL; // URL completo
   const headers = {
     "Authorization": `Bearer ${process.env.CHATBASE_API_KEY}`,
     "Content-Type": "application/json"
   };
 
+  // A) formato "messages" (consigliato)
   const payloadA = { botId: process.env.CHATBASE_BOT_ID, messages, temperature: 0.7, max_tokens: 180 };
+  // B) fallback "query"
   const payloadB = { botId: process.env.CHATBASE_BOT_ID, query: String(message), temperature: 0.7, max_tokens: 180 };
 
   try {
     let r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payloadA) });
-    if (r.status >= 400) r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payloadB) });
+    if (!r.ok) r = await fetch(url, { method: "POST", headers, body: JSON.stringify(payloadB) });
     const data = await r.json();
 
     let answer = (

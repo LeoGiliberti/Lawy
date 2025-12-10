@@ -31,12 +31,15 @@
   </div>
 
  <script type="module">
+  // 1) FISSA il dominio del deployment
+  const API_BASE = 'https://lawy-n1o83p7jp-leos-projects-abf1137f.vercel.app';
+
   const $ = id => document.getElementById(id);
   const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
   const askBtn = $("ask"), qEl = $("q");
   const history = [];
 
-  // === Avatar opzionale ===
+  // === Avatar opzionale (si attiverà quando avrai la HEYGEN_API_KEY) ===
   const MAX_SESSION_MS = 9 * 60 * 1000;
   let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
@@ -47,8 +50,8 @@
 
   async function initAvatarIfAvailable() {
     try {
-      // prova a ottenere il token; se non c'è HEYGEN_API_KEY, questo fallisce
-      const r = await fetch("/api/get-heygen-token", { method: "POST" });
+      // 2) QUI: usa API_BASE
+      const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
       const j = await r.json();
       if (!r.ok || !j?.token) throw new Error("no_token");
 
@@ -68,10 +71,8 @@
 
       await avatar.createStartAvatar({ quality: "high" });
     } catch {
-      // Nessun token → restiamo in sola chat testuale
       statusEl.textContent = "Modalità chat testuale (avatar non ancora configurato).";
-      // opzionale: nascondi il <video>
-      // videoEl.style.display = "none";
+      // videoEl.style.display = "none"; // opzionale
     }
   }
 
@@ -94,24 +95,32 @@
     logEl.textContent = "Chiedo al modello…";
 
     try {
-      const r = await fetch("/api/chat", {
+      // 3) QUI: usa API_BASE
+      const r = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg, history: history.slice(-6) })
       });
+
+      // errore più chiaro se l’API fallisce
+      if (!r.ok) {
+        const t = await r.text();
+        logEl.textContent = `Errore API: ${r.status} ${t}`;
+        return;
+      }
+
       const { answer } = await r.json();
       history.push({ role: "assistant", content: answer });
       logEl.textContent = "Risposta: " + answer;
 
-      // Se l’avatar è attivo, parla; altrimenti restiamo testuali
       if (avatar) {
         try { await avatar.speak({ text: answer }); } catch {}
       }
-    } catch {
-      logEl.textContent = "Errore nel recupero della risposta.";
+    } catch (e) {
+      logEl.textContent = `Errore di rete: ${e?.message || e}`;
     }
   });
 
-  // Avvio: tenta avatar, altrimenti mostra solo chat
+  // Avvio: tenta avatar, altrimenti solo chat
   initAvatarIfAvailable();
 </script>

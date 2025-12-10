@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>Avatar + Chat (Chatbase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin:0; font-family: system-ui, sans-serif; background:#0b0c10; color:#fff; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; text-align: center; }
+    h1 { margin:0 0 10px; font-size: clamp(20px,4vw,32px); }
+    video { width:100%; background:#000; border-radius:12px; display:block; }
+    .row { display:flex; gap:8px; margin-top:12px; }
+    input { flex:1; padding:12px; border-radius:10px; border:0; background:#0f1115; color:#fff; }
+    button { padding:12px 16px; border-radius:10px; border:0; background:#5ac8fa; color:#001018; font-weight:600; cursor:pointer; }
+    .status { margin-top:8px; color:#9aa0a6; font-size:14px; }
+    .log { margin-top:10px; font-size:14px; color:#9aa0a6; min-height:20px; text-align:left; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Assistente AI</h1>
+    <video id="avatarVideo" autoplay playsinline muted></video>
+    <div id="status" class="status">Connessione all’avatar…</div>
+
+    <div class="row">
+      <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" />
+      <button id="ask">Invia</button>
+    </div>
+
+    <div id="log" class="log"></div>
+  </div>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
+    const askBtn = $("ask"), qEl = $("q");
+
+    // Chat history minima per contesto (ultimi 6 turni)
+    const history = []; // es: { role:"user"|"assistant", content:"..." }
+
+    // === HeyGen SDK + auto-reconnect ===
+    const MAX_SESSION_MS = 9 * 60 * 1000; // rinnovo ogni ~9'
+    let StreamingAvatar, StreamingEvents, avatar, startedAt = 0, rotateTimer;
+
+    async function loadSDK() {
+      ({ default: StreamingAvatar, StreamingEvents } =
+        await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.js"));
+    }
+
+    async function getHeygenToken() {
+      const r = await fetch("/api/get-heygen-token", { method:"POST" });
+      const j = await r.json();
+      if (!j?.token) throw new Error("Token HeyGen mancante");
+      return j.token;
+    }
+
+    async function startAvatar() {
+      try {
+        const token = await getHeygenToken();
+        avatar = new StreamingAvatar({ token });
+        avatar.on(StreamingEvents.STREAM_READY, (e) => {
+          videoEl.srcObject = e.detail;
+          videoEl.play();
+          statusEl.textContent = "Avatar pronto. Fai una domanda.";
+          startedAt = Date.now();
+          if (rotateTimer) clearInterval(rotateTimer);
+          rotateTimer = setInterval(rotateIfNeeded, 10000);
+        });
+        // protezione: se cade la connessione, riparti
+        avatar.on(StreamingEvents.STREAM_DISCONNECTED, restartAvatar);
+        avatar.on(StreamingEvents.ERROR, restartAvatar);
+
+        await avatar.createStartAvatar({ quality: "high" });
+      } catch (e) {
+        statusEl.textContent = "Errore avvio avatar. Ricarica la pagina.";
+      }
+    }
+
+    async function rotateIfNeeded() {
+      if (Date.now() - startedAt < MAX_SESSION_MS) return;
+      await restartAvatar();
+    }
+
+    async function restartAvatar() {
+      statusEl.textContent = "Rinnovo sessione…";
+      try { if (avatar?.stopAvatar) await avatar.stopAvatar(); if (avatar?.stop) await avatar.stop(); } catch {}
+      await startAvatar();
+    }
+
+    askBtn.addEventListener("click", async () => {
+      const msg = qEl.value.trim();
+      if (!msg) return;
+      qEl.value = "";
+      history.push({ role: "user", content: msg });
+      logEl.textContent = "Chiedo al modello…";
+
+      try {
+        const r = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify({ message: msg, history: history.slice(-6) })
+        });
+        const { answer } = await r.json();
+        history.push({ role: "assistant", content: answer });
+        logEl.textContent = "Risposta: " + answer;
+
+        // L’avatar parla (voce IT selezionata nel tuo HeyGen Studio)
+        await avatar.speak({ text: answer });
+        logEl.textContent = "Pronto per un’altra domanda.";
+      } catch {
+        logEl.textContent = "Errore nel recupero della risposta.";
+      }
+    });
+
+    await loadSDK();
+    await startAvatar();
+  </script>
+</body>
+</html>

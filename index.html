@@ -30,16 +30,20 @@
     <div id="log" class="log"></div>
   </div>
 
- <script type="module">
-  // 1) FISSA il dominio del deployment
-  const API_BASE = 'https://lawy-n1o83p7jp-leos-projects-abf1137f.vercel.app';
+<script type="module">
+  // Se la pagina è già sul dominio del deployment → usa percorsi relativi (niente CORS).
+  // Se la pagina è aperta da un altro dominio (anteprima, Wix, ecc.) → usa URL assoluto.
+  const PROD_BASE = 'https://lawy-n1o83p7jp-leos-projects-abf1137f.vercel.app';
+  const API_BASE = location.hostname.includes('vercel.app') && location.hostname.includes('leos-projects-abf1137f')
+    ? ''              // stesso dominio → relative path: /api/...
+    : PROD_BASE;      // altro dominio → chiama il deployment con URL assoluto
 
   const $ = id => document.getElementById(id);
   const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
   const askBtn = $("ask"), qEl = $("q");
   const history = [];
 
-  // === Avatar opzionale (si attiverà quando avrai la HEYGEN_API_KEY) ===
+  // Avatar opzionale (si attiverà quando avrai HEYGEN_API_KEY)
   const MAX_SESSION_MS = 9 * 60 * 1000;
   let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
@@ -50,8 +54,7 @@
 
   async function initAvatarIfAvailable() {
     try {
-      // 2) QUI: usa API_BASE
-      const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
+      const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST", mode: "cors", cache: "no-store" });
       const j = await r.json();
       if (!r.ok || !j?.token) throw new Error("no_token");
 
@@ -86,7 +89,21 @@
     await initAvatarIfAvailable();
   }
 
-  // === Invio domanda (funziona anche senza avatar) ===
+  // --- PING diagnostico all’avvio: ci dice subito se la route è raggiungibile ---
+  (async () => {
+    try {
+      const ping = await fetch(`${API_BASE}/api/chat`, {
+        method: "GET", mode: "cors", cache: "no-store"
+      });
+      // su GET la funzione risponde 405: è ok, vuol dire che l’endpoint esiste
+      if (ping.status !== 405) console.warn("Ping /api/chat atteso 405, ottenuto:", ping.status);
+    } catch (e) {
+      console.error("Ping /api/chat fallito:", e);
+      statusEl.textContent = "Errore di rete verso l'API. Controlla dominio/API_BASE.";
+    }
+  })();
+
+  // Invio domanda (funziona anche senza avatar)
   askBtn.addEventListener("click", async () => {
     const msg = qEl.value.trim();
     if (!msg) return;
@@ -95,16 +112,16 @@
     logEl.textContent = "Chiedo al modello…";
 
     try {
-      // 3) QUI: usa API_BASE
       const r = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
+        mode: "cors",           // esplicito
+        cache: "no-store",      // niente cache
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg, history: history.slice(-6) })
       });
 
-      // errore più chiaro se l’API fallisce
       if (!r.ok) {
-        const t = await r.text();
+        const t = await r.text().catch(()=>"(no body)");
         logEl.textContent = `Errore API: ${r.status} ${t}`;
         return;
       }
@@ -121,6 +138,6 @@
     }
   });
 
-  // Avvio: tenta avatar, altrimenti solo chat
+  // Avvio
   initAvatarIfAvailable();
 </script>

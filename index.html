@@ -10,29 +10,26 @@
     .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
     h1 { margin:0 0 10px; font-size: clamp(20px,4vw,32px); text-align:center; }
     video { width:100%; background:#000; border-radius:12px; display:block; }
-    .row { display:flex; gap:8px; margin-top:12px; }
-    input { flex:1; padding:12px; border-radius:10px; border:0; background:#0f1115; color:#fff; }
-    button { padding:12px 16px; border-radius:10px; border:0; background:#5ac8fa; color:#001018; font-weight:600; cursor:pointer; }
-    button[disabled] { opacity:0.6; cursor:not-allowed; }
     .status { margin-top:8px; color:#9aa0a6; font-size:14px; text-align:center; }
-    .log { margin-top:8px; font-size:14px; color:#9aa0a6; min-height:18px; text-align:left; }
 
-    /* Chat a scorrimento (bolle) */
+    /* Chat a scorrimento (ancorata in basso) */
     .chat {
-      margin-top: 12px;
-      max-height: 420px;
-      overflow: auto;
+      margin-top: 16px;
+      height: 420px;               /* fissa l’altezza del box */
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;      /* messaggi in colonna */
+      justify-content: flex-end;   /* ultimi messaggi in basso */
       text-align: left;
-      padding-right: 4px;
+      padding: 10px;
       border: 1px solid #15181d;
       border-radius: 12px;
       background: #0f1115;
-      padding: 10px;
+      gap: 8px;
     }
     .msg {
-      display: inline-block;
+      display: inline-flex;
       max-width: 85%;
-      margin: 6px 0;
       padding: 10px 12px;
       border-radius: 12px;
       white-space: pre-wrap;
@@ -40,20 +37,26 @@
       word-wrap: break-word;
     }
     .msg.user {
+      align-self: flex-end;        /* a destra */
       background: #1a73e8;
       color: #fff;
-      float: right;
-      clear: both;
       border-bottom-right-radius: 6px;
     }
     .msg.assistant {
+      align-self: flex-start;      /* a sinistra */
       background: #0b0c10;
       color: #e3e3e3;
-      float: left;
-      clear: both;
-      border-bottom-left-radius: 6px;
       border: 1px solid #15181d;
+      border-bottom-left-radius: 6px;
     }
+
+    .log { margin-top:8px; font-size:14px; color:#9aa0a6; min-height:18px; text-align:left; }
+
+    /* Riga input sotto la chat */
+    .row { display:flex; gap:8px; margin-top:12px; }
+    input { flex:1; padding:12px; border-radius:10px; border:0; background:#0f1115; color:#fff; }
+    button { padding:12px 16px; border-radius:10px; border:0; background:#5ac8fa; color:#001018; font-weight:600; cursor:pointer; }
+    button[disabled] { opacity:0.6; cursor:not-allowed; }
 
     @media (max-width: 640px) {
       .row { flex-direction: column; }
@@ -69,20 +72,20 @@
     <video id="avatarVideo" autoplay playsinline muted style="display:none"></video>
     <div id="status" class="status">Modalità chat testuale (avatar non ancora configurato).</div>
 
-    <!-- Input -->
-    <div class="row" style="margin-top:16px;">
+    <!-- CHAT (sopra) -->
+    <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
+    <div id="log" class="log"></div>
+
+    <!-- INPUT (sotto la chat) -->
+    <div class="row">
       <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" autocomplete="off" />
       <button id="ask">Invia</button>
     </div>
-
-    <!-- Chat + stato -->
-    <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
-    <div id="log" class="log"></div>
   </div>
 
   <script type="module">
-    // CHIAMATE RELATIVE: pagina e API sullo stesso dominio (consigliato)
-    const API_BASE = ''; // se incorpori altrove e serve assoluto: metti "https://<tuo-dominio>.vercel.app"
+    // CHIAMATE RELATIVE: pagina e API sullo stesso dominio
+    const API_BASE = '';
 
     const $ = id => document.getElementById(id);
     const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
@@ -109,8 +112,7 @@
 
         avatar.on(StreamingEvents.STREAM_READY, (e) => {
           videoEl.srcObject = e.detail;
-          videoEl.style.display = "block";   // mostra il video appena pronto
-          // Sblocca audio su interazione utente (alcuni browser lo richiedono)
+          videoEl.style.display = "block";
           videoEl.addEventListener('click', () => { videoEl.muted = false; }, { once:true });
           videoEl.play();
           statusEl.textContent = "Avatar pronto. Fai una domanda.";
@@ -123,7 +125,6 @@
 
         await avatar.createStartAvatar({ quality: "high" });
       } catch {
-        // Nessun token/chiave: resta in modalità chat testuale
         videoEl.style.display = "none";
         statusEl.textContent = "Modalità chat testuale (avatar non ancora configurato).";
       }
@@ -145,6 +146,7 @@
       el.className = `msg ${role}`;
       el.textContent = text;
       chatEl.appendChild(el);
+      // resta ancorata in basso
       chatEl.scrollTop = chatEl.scrollHeight;
     }
 

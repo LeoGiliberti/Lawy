@@ -12,32 +12,42 @@
     video { width:100%; background:#000; border-radius:12px; display:block; }
     .status { margin-top:8px; color:#9aa0a6; font-size:14px; text-align:center; }
 
-    /* Contenitore chat + rail */
-    .chat-wrap {
-      position: relative;
+    /* CHAT con scrollbar nativa personalizzata, ancorata in basso */
+    .chat {
       margin-top: 16px;
       height: 420px;
-      border: 1px solid #15181d;
-      border-radius: 12px;
-      background: #0f1115;
-      padding-right: 18px;          /* spazio per la rail */
-      box-sizing: border-box;       /* include padding/border nell'altezza */
-    }
-
-    /* Chat ancorata in basso (no overflow) */
-    .chat {
-      height: 100%;
-      box-sizing: border-box;       /* evita che il padding faccia “uscire” i contenuti */
-      overflow-y: auto;
+      overflow-y: auto;                 /* scorrimento verticale */
+      /* se vuoi forzarla sempre visibile anche quando c’è poco testo: */
+      /* overflow-y: scroll; */
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;    /* ultimi messaggi in basso */
+      justify-content: flex-end;        /* ultimi messaggi in basso */
       text-align: left;
       padding: 10px;
       gap: 8px;
-      scrollbar-width: none;        /* Firefox: nasconde scrollbar nativa */
+      border: 1px solid #15181d;
+      border-radius: 12px;
+      background: #0f1115;
+      box-sizing: border-box;
+      /* Firefox */
+      scrollbar-width: thin;
+      scrollbar-color: #2b98f0 #0b0c10; /* thumb | track */
     }
-    .chat::-webkit-scrollbar { display: none; } /* WebKit: nasconde scrollbar nativa */
+    /* WebKit (Chrome, Edge, Safari) */
+    .chat::-webkit-scrollbar { width: 10px; }
+    .chat::-webkit-scrollbar-track {
+      background: #0b0c10;
+      border-radius: 999px;
+    }
+    .chat::-webkit-scrollbar-thumb {
+      background: #2b98f0;
+      border-radius: 999px;
+      border: 2px solid #0f1115; /* bordo per non “sparire” su sfondo scuro */
+    }
+    /* Riserva spazio stabile per la scrollbar dove supportato */
+    @supports (scrollbar-gutter: stable) {
+      .chat { scrollbar-gutter: stable; }
+    }
 
     .msg {
       display: inline-flex;
@@ -64,35 +74,6 @@
 
     .log { margin-top:8px; font-size:14px; color:#9aa0a6; min-height:18px; text-align:left; }
 
-    /* Rail/slider personalizzato */
-    .rail {
-      position: absolute;
-      top: 10px;
-      right: 6px;
-      bottom: 10px;
-      width: 8px;
-      background: #0b0c10;
-      border: 1px solid #15181d;
-      border-radius: 999px;
-      opacity: 0.9;
-      user-select: none;
-      display: none; /* si mostra solo quando serve (via JS) */
-    }
-    .handle {
-      position: absolute;
-      left: -1px;                /* leggero overdraw per coprire bordo rail */
-      width: 10px;
-      height: 40px;              /* ricalcolata via JS */
-      background: #2b98f0;
-      border-radius: 999px;
-      border: 2px solid #0f1115;
-      box-sizing: border-box;
-      cursor: grab;
-    }
-    .handle:active { cursor: grabbing; }
-    .noselect { user-select: none; }
-
-    /* Riga input sotto la chat */
     .row { display:flex; gap:8px; margin-top:12px; }
     input { flex:1; padding:12px; border-radius:10px; border:0; background:#0f1115; color:#fff; }
     button { padding:12px 16px; border-radius:10px; border:0; background:#5ac8fa; color:#001018; font-weight:600; cursor:pointer; }
@@ -112,11 +93,8 @@
     <video id="avatarVideo" autoplay playsinline muted style="display:none"></video>
     <div id="status" class="status">Modalità chat testuale (avatar non ancora configurato).</div>
 
-    <!-- CHAT + SLIDER -->
-    <div class="chat-wrap">
-      <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
-      <div class="rail" id="rail"><div class="handle" id="handle"></div></div>
-    </div>
+    <!-- CHAT -->
+    <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
     <div id="log" class="log"></div>
 
     <!-- INPUT -->
@@ -132,7 +110,6 @@
     const $ = id => document.getElementById(id);
     const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
     const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
-    const railEl = $("rail"), handleEl = $("handle");
     const history = [];
 
     // Avatar opzionale (si attiverà con HEYGEN_API_KEY su Vercel)
@@ -190,7 +167,6 @@
       el.textContent = text;
       chatEl.appendChild(el);
       chatEl.scrollTop = chatEl.scrollHeight; // resta ancorata in basso
-      updateHandle();                          // aggiorna slider
     }
 
     async function sendMessage() {
@@ -242,58 +218,6 @@
     qEl.setAttribute("enterkeyhint", "send");
     qEl.setAttribute("autocomplete", "off");
 
-    // --- SLIDER PERSONALIZZATO ---
-    function updateHandle() {
-      const el = chatEl;
-      const visible = el.clientHeight;      // include padding grazie a border-box
-      const total = el.scrollHeight;
-      const ratio = Math.min(1, visible / Math.max(1, total));
-      const handleH = Math.max(40, Math.floor(visible * ratio));
-      handleEl.style.height = handleH + 'px';
-
-      const maxScroll = Math.max(0, total - visible);
-      const maxTop = Math.max(0, visible - handleH);
-      const top = maxScroll ? (el.scrollTop / maxScroll) * maxTop : 0;
-      handleEl.style.top = top + 'px';
-
-      railEl.style.display = (total <= visible) ? 'none' : 'block';
-    }
-
-    chatEl.addEventListener('scroll', updateHandle);
-    window.addEventListener('resize', updateHandle);
-
-    // Drag
-    let dragging = false, startY = 0, startTop = 0;
-    handleEl.addEventListener('mousedown', (e) => {
-      dragging = true;
-      startY = e.clientY;
-      startTop = parseInt(handleEl.style.top || '0', 10) || 0;
-      document.body.classList.add('noselect');
-      e.preventDefault();
-    });
-    window.addEventListener('mousemove', (e) => {
-      if (!dragging) return;
-      const el = chatEl;
-      const visible = el.clientHeight;
-      const total = el.scrollHeight;
-      const handleH = handleEl.offsetHeight;
-      const maxTop = Math.max(0, visible - handleH);
-
-      let newTop = startTop + (e.clientY - startY);
-      newTop = Math.max(0, Math.min(maxTop, newTop));
-      handleEl.style.top = newTop + 'px';
-
-      const maxScroll = Math.max(0, total - visible);
-      const newScroll = maxTop ? (newTop / maxTop) * maxScroll : 0;
-      el.scrollTop = newScroll;
-    });
-    window.addEventListener('mouseup', () => {
-      if (dragging) {
-        dragging = false;
-        document.body.classList.remove('noselect');
-      }
-    });
-
     // Ping diagnostico: GET /api/chat deve dare 405
     (async () => {
       try {
@@ -306,8 +230,6 @@
 
     // Avvio
     initAvatarIfAvailable();
-    // Delay minimo per assicurare layout stabile prima del calcolo slider
-    requestAnimationFrame(updateHandle);
   </script>
 </body>
 </html>

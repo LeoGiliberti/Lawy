@@ -2,146 +2,215 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>Avatar + Chat (Chatbase)</title>
+  <title>Assistente AI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { margin:0; font-family: system-ui, sans-serif; background:#0b0c10; color:#fff; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; text-align: center; }
-    h1 { margin:0 0 10px; font-size: clamp(20px,4vw,32px); }
+    :root { color-scheme: dark; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0c10; color:#fff; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+    h1 { margin:0 0 10px; font-size: clamp(20px,4vw,32px); text-align:center; }
     video { width:100%; background:#000; border-radius:12px; display:block; }
     .row { display:flex; gap:8px; margin-top:12px; }
     input { flex:1; padding:12px; border-radius:10px; border:0; background:#0f1115; color:#fff; }
     button { padding:12px 16px; border-radius:10px; border:0; background:#5ac8fa; color:#001018; font-weight:600; cursor:pointer; }
-    .status { margin-top:8px; color:#9aa0a6; font-size:14px; }
-    .log { margin-top:10px; font-size:14px; color:#9aa0a6; min-height:20px; text-align:left; }
-     .chat {
-  margin-top: 12px;
-  max-height: 420px;       /* regola se vuoi più/meno spazio */
-  overflow: auto;
-  text-align: left;
-  padding-right: 4px;
-}
-.msg {
-  display: inline-block;
-  max-width: 85%;
-  margin: 6px 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  white-space: pre-wrap;   /* conserva a capo */
-  line-height: 1.35;
-}
-.msg.user {
-  background: #1a73e8;
-  color: #fff;
-  align-self: flex-end;
-  float: right;
-  clear: both;
-  border-bottom-right-radius: 6px;
-}
-.msg.assistant {
-  background: #0f1115;
-  color: #e3e3e3;
-  float: left;
-  clear: both;
-  border-bottom-left-radius: 6px;
-}
+    button[disabled] { opacity:0.6; cursor:not-allowed; }
+    .status { margin-top:8px; color:#9aa0a6; font-size:14px; text-align:center; }
+    .log { margin-top:8px; font-size:14px; color:#9aa0a6; min-height:18px; text-align:left; }
 
+    /* Chat a scorrimento (bolle) */
+    .chat {
+      margin-top: 12px;
+      max-height: 420px;
+      overflow: auto;
+      text-align: left;
+      padding-right: 4px;
+      border: 1px solid #15181d;
+      border-radius: 12px;
+      background: #0f1115;
+      padding: 10px;
+    }
+    .msg {
+      display: inline-block;
+      max-width: 85%;
+      margin: 6px 0;
+      padding: 10px 12px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      line-height: 1.35;
+      word-wrap: break-word;
+    }
+    .msg.user {
+      background: #1a73e8;
+      color: #fff;
+      float: right;
+      clear: both;
+      border-bottom-right-radius: 6px;
+    }
+    .msg.assistant {
+      background: #0b0c10;
+      color: #e3e3e3;
+      float: left;
+      clear: both;
+      border-bottom-left-radius: 6px;
+      border: 1px solid #15181d;
+    }
+
+    @media (max-width: 640px) {
+      .row { flex-direction: column; }
+      button { width:100%; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Lawy</h1>
-    <video id="avatarVideo" autoplay playsinline muted></video>
-    <div id="status" class="status">Connessione all’avatar…</div>
+    <h1>Assistente AI</h1>
 
-   
-    
-<div class="row">
-      <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" />
+    <!-- Video avatar (nascosto finché non c’è token HeyGen) -->
+    <video id="avatarVideo" autoplay playsinline muted style="display:none"></video>
+    <div id="status" class="status">Modalità chat testuale (avatar non ancora configurato).</div>
+
+    <!-- Input -->
+    <div class="row" style="margin-top:16px;">
+      <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" autocomplete="off" />
       <button id="ask">Invia</button>
     </div>
 
+    <!-- Chat + stato -->
     <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
-<div id="log" class="log"></div>
+    <div id="log" class="log"></div>
+  </div>
 
-const $ = id => document.getElementById(id);
-const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
-const askBtn = $("ask"), qEl = $("q");
-const chatEl = $("chat");                 // <<— nuovo
-const history = [];
+  <script type="module">
+    // CHIAMATE RELATIVE: pagina e API sullo stesso dominio (consigliato)
+    const API_BASE = ''; // se incorpori altrove e serve assoluto: metti "https://<tuo-dominio>.vercel.app"
 
-// append di un messaggio nella chat
-function addMessage(role, text) {
-  const el = document.createElement("div");
-  el.className = `msg ${role}`;
-  el.textContent = text;                  // sicuro (niente HTML)
-  chatEl.appendChild(el);
-  // scroll in basso
-  chatEl.scrollTop = chatEl.scrollHeight;
-}
+    const $ = id => document.getElementById(id);
+    const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
+    const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
+    const history = [];
 
-// funzione centralizzata di invio
-async function sendMessage() {
-  const msg = qEl.value.trim();
-  if (!msg) return;
+    // Avatar opzionale (si attiverà quando avrai HEYGEN_API_KEY su Vercel)
+    const MAX_SESSION_MS = 9 * 60 * 1000;
+    let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
-  // UI
-  qEl.value = "";
-  askBtn.disabled = true;
-  askBtn.textContent = "Invio…";
-  logEl.textContent = "Chiedo al modello…";
+    async function loadSDK() {
+      ({ default: StreamingAvatar, StreamingEvents } =
+        await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.js"));
+    }
 
-  // aggiorna stato locale + UI chat
-  history.push({ role: "user", content: msg });
-  addMessage("user", msg);
+    async function initAvatarIfAvailable() {
+      try {
+        const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
+        const j = await r.json();
+        if (!r.ok || !j?.token) throw new Error("no_token");
 
-  try {
-    const r = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg, history: history.slice(-6) })
+        await loadSDK();
+        avatar = new StreamingAvatar({ token: j.token });
+
+        avatar.on(StreamingEvents.STREAM_READY, (e) => {
+          videoEl.srcObject = e.detail;
+          videoEl.style.display = "block";   // mostra il video appena pronto
+          // Sblocca audio su interazione utente (alcuni browser lo richiedono)
+          videoEl.addEventListener('click', () => { videoEl.muted = false; }, { once:true });
+          videoEl.play();
+          statusEl.textContent = "Avatar pronto. Fai una domanda.";
+          startedAt = Date.now();
+          rotateTimer && clearInterval(rotateTimer);
+          rotateTimer = setInterval(rotateIfNeeded, 10000);
+        });
+        avatar.on(StreamingEvents.STREAM_DISCONNECTED, restartAvatar);
+        avatar.on(StreamingEvents.ERROR, restartAvatar);
+
+        await avatar.createStartAvatar({ quality: "high" });
+      } catch {
+        // Nessun token/chiave: resta in modalità chat testuale
+        videoEl.style.display = "none";
+        statusEl.textContent = "Modalità chat testuale (avatar non ancora configurato).";
+      }
+    }
+
+    async function rotateIfNeeded() {
+      if (!avatar) return;
+      if (Date.now() - startedAt < MAX_SESSION_MS) return;
+      await restartAvatar();
+    }
+    async function restartAvatar() {
+      try { if (avatar?.stopAvatar) await avatar.stopAvatar(); if (avatar?.stop) await avatar.stop(); } catch {}
+      await initAvatarIfAvailable();
+    }
+
+    // --- Chat UI ---
+    function addMessage(role, text) {
+      const el = document.createElement("div");
+      el.className = `msg ${role}`;
+      el.textContent = text;
+      chatEl.appendChild(el);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const msg = qEl.value.trim();
+      if (!msg) return;
+
+      qEl.value = "";
+      askBtn.disabled = true;
+      askBtn.textContent = "Invio…";
+      logEl.textContent = "Chiedo al modello…";
+
+      history.push({ role: "user", content: msg });
+      addMessage("user", msg);
+
+      try {
+        const r = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: msg, history: history.slice(-6) })
+        });
+
+        if (!r.ok) {
+          const t = await r.text().catch(()=>"(no body)");
+          logEl.textContent = `Errore API: ${r.status} ${t}`;
+          return;
+        }
+
+        const { answer } = await r.json();
+        history.push({ role: "assistant", content: answer });
+        addMessage("assistant", answer);
+        logEl.textContent = "";
+
+        if (avatar) {
+          try { await avatar.speak({ text: answer }); } catch {}
+        }
+      } catch (e) {
+        logEl.textContent = `Errore di rete: ${e?.message || e}`;
+      } finally {
+        askBtn.disabled = false;
+        askBtn.textContent = "Invia";
+      }
+    }
+
+    askBtn.addEventListener("click", sendMessage);
+    qEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
     });
+    qEl.setAttribute("enterkeyhint", "send");
+    qEl.setAttribute("autocomplete", "off");
 
-    if (!r.ok) {
-      const t = await r.text().catch(()=>"(no body)");
-      logEl.textContent = `Errore API: ${r.status} ${t}`;
-      return;
-    }
+    // Ping diagnostico: GET /api/chat deve dare 405 (endpoint esiste)
+    (async () => {
+      try {
+        const ping = await fetch(`${API_BASE}/api/chat`, { method: "GET" });
+        if (ping.status !== 405) console.warn("Ping /api/chat atteso 405, ottenuto:", ping.status);
+      } catch (e) {
+        statusEl.textContent = "Errore di rete verso l'API. Ricarica la pagina su questo dominio.";
+      }
+    })();
 
-    const { answer } = await r.json();
-    history.push({ role: "assistant", content: answer });
-    addMessage("assistant", answer);      // <<— appende, non sovrascrive
-    logEl.textContent = "";               // pulisci stato
-
-    if (avatar) {
-      try { await avatar.speak({ text: answer }); } catch {}
-    }
-  } catch (e) {
-    logEl.textContent = `Errore di rete: ${e?.message || e}`;
-  } finally {
-    askBtn.disabled = false;
-    askBtn.textContent = "Invia";
-  }
-}
-
-// click sul bottone
-askBtn.addEventListener("click", sendMessage);
-
-// Enter sulla tastiera
-qEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    sendMessage();
-  }
-});
-
-      
-
-// (facoltativo) migliore UX su mobile: tasto invio “Invia”
-qEl.setAttribute("enterkeyhint", "send");
-qEl.setAttribute("autocomplete", "off");
-
-
-  // Avvio
-  initAvatarIfAvailable();
-</script>
+    // Avvio
+    initAvatarIfAvailable();
+  </script>
+</body>
+</html>

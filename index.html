@@ -20,20 +20,22 @@
       border: 1px solid #15181d;
       border-radius: 12px;
       background: #0f1115;
-      padding-right: 18px; /* spazio per la rail */
+      padding-right: 18px;          /* spazio per la rail */
+      box-sizing: border-box;       /* include padding/border nell'altezza */
     }
 
-    /* Chat ancorata in basso */
+    /* Chat ancorata in basso (no overflow) */
     .chat {
       height: 100%;
+      box-sizing: border-box;       /* evita che il padding faccia “uscire” i contenuti */
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
+      justify-content: flex-end;    /* ultimi messaggi in basso */
       text-align: left;
-      padding: 10px 10px 10px 10px;
+      padding: 10px;
       gap: 8px;
-      scrollbar-width: none;          /* Firefox: nasconde scrollbar nativa */
+      scrollbar-width: none;        /* Firefox: nasconde scrollbar nativa */
     }
     .chat::-webkit-scrollbar { display: none; } /* WebKit: nasconde scrollbar nativa */
 
@@ -74,12 +76,13 @@
       border-radius: 999px;
       opacity: 0.9;
       user-select: none;
+      display: none; /* si mostra solo quando serve (via JS) */
     }
     .handle {
       position: absolute;
       left: -1px;                /* leggero overdraw per coprire bordo rail */
       width: 10px;
-      height: 40px;              /* sarà ricalcolata via JS */
+      height: 40px;              /* ricalcolata via JS */
       background: #2b98f0;
       border-radius: 999px;
       border: 2px solid #0f1115;
@@ -124,7 +127,7 @@
   </div>
 
   <script type="module">
-    const API_BASE = ''; // relative paths
+    const API_BASE = ''; // percorsi relativi
 
     const $ = id => document.getElementById(id);
     const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
@@ -186,8 +189,8 @@
       el.className = `msg ${role}`;
       el.textContent = text;
       chatEl.appendChild(el);
-      chatEl.scrollTop = chatEl.scrollHeight;
-      updateHandle(); // aggiorna slider
+      chatEl.scrollTop = chatEl.scrollHeight; // resta ancorata in basso
+      updateHandle();                          // aggiorna slider
     }
 
     async function sendMessage() {
@@ -242,7 +245,7 @@
     // --- SLIDER PERSONALIZZATO ---
     function updateHandle() {
       const el = chatEl;
-      const visible = el.clientHeight;
+      const visible = el.clientHeight;      // include padding grazie a border-box
       const total = el.scrollHeight;
       const ratio = Math.min(1, visible / Math.max(1, total));
       const handleH = Math.max(40, Math.floor(visible * ratio));
@@ -253,7 +256,6 @@
       const top = maxScroll ? (el.scrollTop / maxScroll) * maxTop : 0;
       handleEl.style.top = top + 'px';
 
-      // mostra/nascondi rail se non serve
       railEl.style.display = (total <= visible) ? 'none' : 'block';
     }
 
@@ -304,7 +306,8 @@
 
     // Avvio
     initAvatarIfAvailable();
-    updateHandle(); // inizializza lo slider
+    // Delay minimo per assicurare layout stabile prima del calcolo slider
+    requestAnimationFrame(updateHandle);
   </script>
 </body>
 </html>

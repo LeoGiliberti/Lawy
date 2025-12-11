@@ -12,21 +12,31 @@
     video { width:100%; background:#000; border-radius:12px; display:block; }
     .status { margin-top:8px; color:#9aa0a6; font-size:14px; text-align:center; }
 
-    /* Chat a scorrimento (ancorata in basso) */
-    .chat {
+    /* Contenitore chat + rail */
+    .chat-wrap {
+      position: relative;
       margin-top: 16px;
-      height: 420px;               /* fissa l’altezza del box */
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;      /* messaggi in colonna */
-      justify-content: flex-end;   /* ultimi messaggi in basso */
-      text-align: left;
-      padding: 10px;
+      height: 420px;
       border: 1px solid #15181d;
       border-radius: 12px;
       background: #0f1115;
-      gap: 8px;
+      padding-right: 18px; /* spazio per la rail */
     }
+
+    /* Chat ancorata in basso */
+    .chat {
+      height: 100%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-align: left;
+      padding: 10px 10px 10px 10px;
+      gap: 8px;
+      scrollbar-width: none;          /* Firefox: nasconde scrollbar nativa */
+    }
+    .chat::-webkit-scrollbar { display: none; } /* WebKit: nasconde scrollbar nativa */
+
     .msg {
       display: inline-flex;
       max-width: 85%;
@@ -37,13 +47,13 @@
       word-wrap: break-word;
     }
     .msg.user {
-      align-self: flex-end;        /* a destra */
+      align-self: flex-end;
       background: #1a73e8;
       color: #fff;
       border-bottom-right-radius: 6px;
     }
     .msg.assistant {
-      align-self: flex-start;      /* a sinistra */
+      align-self: flex-start;
       background: #0b0c10;
       color: #e3e3e3;
       border: 1px solid #15181d;
@@ -51,6 +61,33 @@
     }
 
     .log { margin-top:8px; font-size:14px; color:#9aa0a6; min-height:18px; text-align:left; }
+
+    /* Rail/slider personalizzato */
+    .rail {
+      position: absolute;
+      top: 10px;
+      right: 6px;
+      bottom: 10px;
+      width: 8px;
+      background: #0b0c10;
+      border: 1px solid #15181d;
+      border-radius: 999px;
+      opacity: 0.9;
+      user-select: none;
+    }
+    .handle {
+      position: absolute;
+      left: -1px;                /* leggero overdraw per coprire bordo rail */
+      width: 10px;
+      height: 40px;              /* sarà ricalcolata via JS */
+      background: #2b98f0;
+      border-radius: 999px;
+      border: 2px solid #0f1115;
+      box-sizing: border-box;
+      cursor: grab;
+    }
+    .handle:active { cursor: grabbing; }
+    .noselect { user-select: none; }
 
     /* Riga input sotto la chat */
     .row { display:flex; gap:8px; margin-top:12px; }
@@ -72,11 +109,14 @@
     <video id="avatarVideo" autoplay playsinline muted style="display:none"></video>
     <div id="status" class="status">Modalità chat testuale (avatar non ancora configurato).</div>
 
-    <!-- CHAT (sopra) -->
-    <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
+    <!-- CHAT + SLIDER -->
+    <div class="chat-wrap">
+      <div id="chat" class="chat" aria-live="polite" aria-label="Conversazione"></div>
+      <div class="rail" id="rail"><div class="handle" id="handle"></div></div>
+    </div>
     <div id="log" class="log"></div>
 
-    <!-- INPUT (sotto la chat) -->
+    <!-- INPUT -->
     <div class="row">
       <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" autocomplete="off" />
       <button id="ask">Invia</button>
@@ -84,15 +124,15 @@
   </div>
 
   <script type="module">
-    // CHIAMATE RELATIVE: pagina e API sullo stesso dominio
-    const API_BASE = '';
+    const API_BASE = ''; // relative paths
 
     const $ = id => document.getElementById(id);
     const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
     const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
+    const railEl = $("rail"), handleEl = $("handle");
     const history = [];
 
-    // Avatar opzionale (si attiverà quando avrai HEYGEN_API_KEY su Vercel)
+    // Avatar opzionale (si attiverà con HEYGEN_API_KEY su Vercel)
     const MAX_SESSION_MS = 9 * 60 * 1000;
     let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
@@ -140,14 +180,14 @@
       await initAvatarIfAvailable();
     }
 
-    // --- Chat UI ---
+    // --- CHAT UI ---
     function addMessage(role, text) {
       const el = document.createElement("div");
       el.className = `msg ${role}`;
       el.textContent = text;
       chatEl.appendChild(el);
-      // resta ancorata in basso
       chatEl.scrollTop = chatEl.scrollHeight;
+      updateHandle(); // aggiorna slider
     }
 
     async function sendMessage() {
@@ -180,9 +220,7 @@
         addMessage("assistant", answer);
         logEl.textContent = "";
 
-        if (avatar) {
-          try { await avatar.speak({ text: answer }); } catch {}
-        }
+        if (avatar) { try { await avatar.speak({ text: answer }); } catch {} }
       } catch (e) {
         logEl.textContent = `Errore di rete: ${e?.message || e}`;
       } finally {
@@ -201,7 +239,60 @@
     qEl.setAttribute("enterkeyhint", "send");
     qEl.setAttribute("autocomplete", "off");
 
-    // Ping diagnostico: GET /api/chat deve dare 405 (endpoint esiste)
+    // --- SLIDER PERSONALIZZATO ---
+    function updateHandle() {
+      const el = chatEl;
+      const visible = el.clientHeight;
+      const total = el.scrollHeight;
+      const ratio = Math.min(1, visible / Math.max(1, total));
+      const handleH = Math.max(40, Math.floor(visible * ratio));
+      handleEl.style.height = handleH + 'px';
+
+      const maxScroll = Math.max(0, total - visible);
+      const maxTop = Math.max(0, visible - handleH);
+      const top = maxScroll ? (el.scrollTop / maxScroll) * maxTop : 0;
+      handleEl.style.top = top + 'px';
+
+      // mostra/nascondi rail se non serve
+      railEl.style.display = (total <= visible) ? 'none' : 'block';
+    }
+
+    chatEl.addEventListener('scroll', updateHandle);
+    window.addEventListener('resize', updateHandle);
+
+    // Drag
+    let dragging = false, startY = 0, startTop = 0;
+    handleEl.addEventListener('mousedown', (e) => {
+      dragging = true;
+      startY = e.clientY;
+      startTop = parseInt(handleEl.style.top || '0', 10) || 0;
+      document.body.classList.add('noselect');
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const el = chatEl;
+      const visible = el.clientHeight;
+      const total = el.scrollHeight;
+      const handleH = handleEl.offsetHeight;
+      const maxTop = Math.max(0, visible - handleH);
+
+      let newTop = startTop + (e.clientY - startY);
+      newTop = Math.max(0, Math.min(maxTop, newTop));
+      handleEl.style.top = newTop + 'px';
+
+      const maxScroll = Math.max(0, total - visible);
+      const newScroll = maxTop ? (newTop / maxTop) * maxScroll : 0;
+      el.scrollTop = newScroll;
+    });
+    window.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = false;
+        document.body.classList.remove('noselect');
+      }
+    });
+
+    // Ping diagnostico: GET /api/chat deve dare 405
     (async () => {
       try {
         const ping = await fetch(`${API_BASE}/api/chat`, { method: "GET" });
@@ -213,6 +304,7 @@
 
     // Avvio
     initAvatarIfAvailable();
+    updateHandle(); // inizializza lo slider
   </script>
 </body>
 </html>

@@ -95,38 +95,52 @@
     }
   })();
 
-  // Invio domanda
-  askBtn.addEventListener("click", async () => {
-    const msg = qEl.value.trim();
-    if (!msg) return;
-    qEl.value = "";
-    history.push({ role: "user", content: msg });
-    logEl.textContent = "Chiedo al modello…";
+// === Invio domanda (funziona anche senza avatar) ===
+async function sendMessage() {
+  const msg = qEl.value.trim();
+  if (!msg) return;
+  qEl.value = "";
+  history.push({ role: "user", content: msg });
+  logEl.textContent = "Chiedo al modello…";
 
-    try {
-      const r = await fetch(`${API_BASE}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, history: history.slice(-6) })
-      });
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg, history: history.slice(-6) })
+    });
 
-      if (!r.ok) {
-        const t = await r.text().catch(()=>"(no body)");
-        logEl.textContent = `Errore API: ${r.status} ${t}`;
-        return;
-      }
-
-      const { answer } = await r.json();
-      history.push({ role: "assistant", content: answer });
-      logEl.textContent = "Risposta: " + answer;
-
-      if (avatar) {
-        try { await avatar.speak({ text: answer }); } catch {}
-      }
-    } catch (e) {
-      logEl.textContent = `Errore di rete: ${e?.message || e}`;
+    if (!r.ok) {
+      const t = await r.text().catch(()=>"");
+      logEl.textContent = `Errore API: ${r.status} ${t}`;
+      return;
     }
-  });
+
+    const { answer } = await r.json();
+    history.push({ role: "assistant", content: answer });
+    logEl.textContent = "Risposta: " + answer;
+
+    if (avatar) { try { await avatar.speak({ text: answer }); } catch {} }
+  } catch (e) {
+    logEl.textContent = `Errore di rete: ${e?.message || e}`;
+  }
+}
+
+// Click sul bottone
+askBtn.addEventListener("click", sendMessage);
+
+// Invio da tastiera
+qEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();        // evita submit/reload
+    sendMessage();
+  }
+});
+
+// (facoltativo) migliore UX su mobile: tasto invio “Invia”
+qEl.setAttribute("enterkeyhint", "send");
+qEl.setAttribute("autocomplete", "off");
+
 
   // Avvio
   initAvatarIfAvailable();

@@ -2,8 +2,18 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>e</title>
+  <title>DTI – Digital Twin Instructor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Import map per risolvere la dipendenza "livekit-client" dell’SDK HeyGen -->
+  <script type="importmap">
+  {
+    "imports": {
+      "livekit-client": "https://cdn.jsdelivr.net/npm/livekit-client@2.16.1/dist/livekit-client.esm.mjs"
+    }
+  }
+  </script>
+
   <style>
     :root {
       --bg:#0b0c10; --panel:#0f1115; --text:#e6e6e6; --muted:#9aa0a6;
@@ -13,9 +23,11 @@
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
            background:var(--bg); color:var(--text); }
     .wrap { max-width:980px; margin:0 auto; padding:20px; }
-    h1 { margin:0 0 8px; font-size:clamp(20px,4vw,30px); font-weight:650; }
-    .sub { color:var(--muted); margin-bottom:14px; }
+    h1 { margin:0 0 4px; font-size:clamp(20px,4vw,30px); font-weight:650; }
+    .sub { color:var(--muted); margin-bottom:10px; }
+    .ver { color:#7a838f; font-size:12px; margin-bottom:14px; }
 
+    /* Avatar box */
     .video-wrap {
       position: relative; background:#000; border:1px solid var(--border);
       border-radius:12px; overflow:hidden; aspect-ratio:16/9; min-height:220px;
@@ -28,6 +40,7 @@
 
     #status { margin:10px 0 16px; color:var(--muted); font-size:14px; }
 
+    /* Chat */
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
     .chat-shell { display:flex; flex-direction:column; gap:12px; }
     #chat {
@@ -54,9 +67,11 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>o</h1>
+    <h1>DTI – Digital Twin Instructor</h1>
     <div class="sub">Interroga il corpus curato. L’avatar interpreta le risposte in italiano.</div>
+    <div class="ver">build: 2025-12-12 22:50</div>
 
+    <!-- Avatar -->
     <div class="video-wrap">
       <video id="avatarVideo" autoplay playsinline muted></video>
       <div id="avatarPh" class="avatar-placeholder">
@@ -65,6 +80,7 @@
     </div>
     <div id="status">Modalità chat testuale (avatar non configurato).</div>
 
+    <!-- Chat -->
     <div class="panel">
       <div class="chat-shell">
         <div id="chat" aria-live="polite" aria-label="Conversazione"></div>
@@ -77,14 +93,6 @@
     </div>
   </div>
 
-  <script type="importmap">
-{
-  "imports": {
-    "livekit-client": "https://cdn.jsdelivr.net/npm/livekit-client@2.16.1/dist/livekit-client.esm.mjs"
-  }
-}
-</script>
-
   <script type="module">
     const API_BASE = ""; // percorsi relativi (/api/*)
     const $ = id => document.getElementById(id);
@@ -92,10 +100,10 @@
     const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
     const history = [];
 
-    /* === HEYGEN: metti i tuoi ID (puoi lasciare avatarId vuoto per test) === */
-    const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b";              // es. "avtr_XXXXXXXX"
-    const HEYGEN_VOICE_ID  = "";              // opzionale: voiceID ITA
-    /* ====================================================================== */
+    /* === HEYGEN: imposta gli ID quando vuoi (puoi lasciare vuoto per il test) === */
+    const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b";              // es. "avtr_XXXXXXXX" (Interactive Avatar)
+    const HEYGEN_VOICE_ID  = "";              // opzionale: voice ID (ITA)
+    /* =========================================================================== */
 
     const MAX_SESSION_MS = 9 * 60 * 1000;
     let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
@@ -103,50 +111,16 @@
     function setPh(msg) {
       const ph = document.getElementById("avatarPh");
       if (ph) ph.textContent = msg;
-      console.log("[Niccolò Musmeci]", msg);
+      console.log("[DTI/Avatar]", msg);
     }
 
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = src; s.async = true;
-        s.onload = resolve;
-        s.onerror = () => reject(new Error(`CDN load failed: ${src}`));
-        document.head.appendChild(s);
-      });
-    }
-
-    // Carico SOLO la build UMD da CDN (nessun import ESM)
-  <script type="module">
-  let StreamingAvatar, StreamingEvents;
-
-  async function loadSDK() {
-    // carica l’ESM reale del pacchetto
-    const mod = await import('https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/lib/index.esm.js');
-    StreamingAvatar = mod.default;
-    StreamingEvents = mod.StreamingEvents;
-    console.log('[DTI/Avatar] SDK ESM caricato');
-  }
-
-  // …il resto del tuo script resta invariato (initAvatarIfAvailable, ecc.)
-
-      const cdnList = [
-        'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
-        'https://unpkg.com/@heygen/streaming-avatar@2.1.0/dist/index.umd.js'
-      ];
-      for (const url of cdnList) {
-        try {
-          await loadScript(url);
-          if (window.HeyGen?.StreamingAvatar) {
-            ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
-            console.log('[DTI/Avatar] SDK UMD caricato da', url);
-            return;
-          }
-        } catch(e) {
-          console.warn('[DTI/Avatar] Tentativo fallito:', url, e.message);
-        }
-      }
-      throw new Error('Impossibile caricare l’SDK HeyGen UMD');
+    async function loadSDK() {
+      if (StreamingAvatar && StreamingEvents) return;
+      // Carico l’ESM ufficiale del pacchetto HeyGen (richiede import map per livekit-client)
+      const mod = await import('https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/lib/index.esm.js');
+      StreamingAvatar = mod.default;
+      StreamingEvents  = mod.StreamingEvents;
+      console.log("[DTI/Avatar] SDK ESM caricato");
     }
 
     async function initAvatarIfAvailable() {
@@ -179,15 +153,16 @@
           }, 10000);
         });
 
-      avatar.on(StreamingEvents.ERROR, (e) => {
-  const m = e?.detail?.message || e?.message || (typeof e === "string" ? e : JSON.stringify(e));
-  console.error("[DTI/Avatar] STREAM_ERROR", e);
-  setPh("Errore streaming: " + (m || "unknown_error"));
-  restartAvatar();
+        avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
+          console.warn("[DTI/Avatar] STREAM_DISCONNECTED");
+          setPh("Connessione interrotta. Riavvio…");
+          restartAvatar();
         });
+
         avatar.on(StreamingEvents.ERROR, (e) => {
+          const m = e?.detail?.message || e?.message || (typeof e === "string" ? e : JSON.stringify(e));
           console.error("[DTI/Avatar] STREAM_ERROR", e);
-          setPh("Errore di streaming. Riprovo…");
+          setPh("Errore streaming: " + (m || "unknown_error"));
           restartAvatar();
         });
 
@@ -198,15 +173,15 @@
         console.log("[DTI/Avatar] createStartAvatar", startOpts);
         setPh("Avvio avatar…");
         await avatar.createStartAvatar(startOpts);
-      } } catch (err) {
-  console.error("[Niccolò Musmeci] init error", err);
-  const msg =
-    (err && (err.detail?.message || err.message)) ||
-    (typeof err === "string" ? err : JSON.stringify(err));
-  statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
-  setPh("Errore avatar: " + (msg || "init_failed"));
-}
-
+        // attendo STREAM_READY
+      } catch (err) {
+        console.error("[DTI/Avatar] init error", err);
+        const msg =
+          (err && (err.detail?.message || err.message)) ||
+          (typeof err === "string" ? err : JSON.stringify(err));
+        statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
+        setPh("Errore avatar: " + (msg || "init_failed"));
+      }
     }
 
     async function restartAvatar() {
@@ -214,6 +189,7 @@
       await initAvatarIfAvailable();
     }
 
+    /* ===== Chat testuale ===== */
     function now() { return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
     function appendMsg(role, text) {
       const b = document.createElement("div");
@@ -250,6 +226,7 @@
       } finally { askBtn.disabled = false; qEl.focus(); }
     });
 
+    /* Avvio */
     initAvatarIfAvailable();
   </script>
 </body>

@@ -149,10 +149,54 @@
         restartAvatar();
       });
 
-      // start minimale per test
-const startOpts = { quality: "low", language: "it" };
-console.log("[DTI/Avatar] createStartAvatar opts", startOpts);
-await avatar.createStartAvatar(startOpts);
+     // --- DIAGNOSI 400: tentativi in sequenza + errori espliciti ---
+async function tryStart(seq) {
+  for (const [i, opts] of seq.entries()) {
+    try {
+      console.log("[DTI/Avatar] TRY", i+1, opts);
+      setPh(`Avvio avatar… (tentativo ${i+1}/${seq.length})`);
+      await avatar.createStartAvatar(opts);
+      console.log("[DTI/Avatar] START OK con", opts);
+      return { ok: true, used: opts };
+    } catch (e) {
+      const d = e?.detail || e;
+      const code = d?.code || d?.status || "";
+      const msg  = d?.message || d?.error || (typeof e === "string" ? e : "");
+      console.warn("[DTI/Avatar] START FAIL", { opts, code, msg });
+      setPh(`Start fallito ${i+1}/${seq.length}${code ? " ["+code+"]" : ""}: ${msg || "bad_request"}`);
+      // continua con il prossimo tentativo
+    }
+  }
+  return { ok: false };
+}
+
+// Sequenza di avvio (dal più semplice al più vincolato)
+const attempts = [
+  { quality: "low" },
+  { quality: "low", language: "en" },
+  { quality: "low", language: "it" },
+
+  // Se hai un ID avatar, proviamo entrambe le chiavi usate dalle varie versioni SDK
+  ...(HEYGEN_AVATAR_ID ? [
+    { quality: "low", avatarName: HEYGEN_AVATAR_ID },
+    { quality: "low", avatarId:   HEYGEN_AVATAR_ID }
+  ] : []),
+
+  // Avatar + lingua (prima en, poi it)
+  ...(HEYGEN_AVATAR_ID ? [
+    { quality: "low", language: "en", avatarName: HEYGEN_AVATAR_ID },
+    { quality: "low", language: "en", avatarId:   HEYGEN_AVATAR_ID },
+    { quality: "low", language: "it", avatarName: HEYGEN_AVATAR_ID },
+    { quality: "low", language: "it", avatarId:   HEYGEN_AVATAR_ID }
+  ] : [])
+];
+
+// Esegui i tentativi
+const rStart = await tryStart(attempts);
+if (!rStart.ok) {
+  throw new Error("start_failed_all_variants"); // scatterà il catch e vedrai il messaggio nel placeholder
+}
+// --- fine diagnostica 400 ---
 
       // attendo STREAM_READY
     } catch (err) {

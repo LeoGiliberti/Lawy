@@ -137,7 +137,8 @@
       ({ default: StreamingAvatar, StreamingEvents } =
         await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.js"));
     }
-
+const HEYGEN_AVATAR_ID = "avtr_XXXXXXXX"; 
+    
     async function initAvatarIfAvailable() {
       try {
         const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });

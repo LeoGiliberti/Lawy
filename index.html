@@ -167,11 +167,12 @@ async function initAvatarIfAvailable() {
     await avatar.createStartAvatar(startOpts);
     // da qui attendiamo STREAM_READY
   } catch (err) {
-    console.error("[DTI/Avatar] init error", err);
-    statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
-    setPh("Impossibile avviare l’avatar. La chat testuale è attiva.");
-    // NON nascondere il riquadro: lasciamo il placeholder visibile
-  }
+  console.error("[DTI/Avatar] init error", err);
+  statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
+  const ph = document.getElementById("avatarPh");
+  if (ph) ph.textContent = "Errore avatar: " + (err?.message || JSON.stringify(err));
+}
+
 }
 
 

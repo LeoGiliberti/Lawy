@@ -124,13 +124,14 @@
         videoEl.play();
         statusEl.textContent = "Avatar pronto. Fai una domanda.";
         startedAt = Date.now();
-        avatar.speak({ text: "Ciao! Dimmi pure la tua domanda." });  // <— TEST: deve animare bocca
-
+        
         // rinnovo prima dei 10'
         rotateTimer && clearInterval(rotateTimer);
         rotateTimer = setInterval(() => {
           if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
         }, 10_000);
+        avatar.speak({ text: "Ciao! Dimmi pure la tua domanda." });  // <— TEST: deve animare bocca
+
       });
 
       avatar.on(StreamingEvents.STREAM_DISCONNECTED, (e) => {

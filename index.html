@@ -115,15 +115,49 @@
       console.log("[DTI/Avatar]", msg);
     }
 
-    async function loadSDK() {
-  if (StreamingAvatar && StreamingEvents) return;
-  // Import ESM ufficiale dal CDN
-  const mod = await import('https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/lib/index.esm.js');
-  // Esportazioni ESM (named exports)
-  const { StreamingAvatar: SA, StreamingEvents: SE } = mod || {};
-  if (!SA || !SE) throw new Error('SDK ESM missing exports');
-  StreamingAvatar = SA;
-  StreamingEvents = SE;
+<script type="module">
+  // ... il resto del tuo script
+
+  // helper per caricare script
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error(`CDN load failed: ${src}`));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function loadSDK() {
+    // se già caricato, esci
+    if (window.HeyGen?.StreamingAvatar) {
+      ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
+      return;
+    }
+    // Prova più CDN sulla build UMD (compatibile browser/Wix)
+    const cdnList = [
+      'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
+      'https://unpkg.com/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
+      'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar/dist/index.umd.js',
+      'https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js'
+    ];
+    let lastErr;
+    for (const url of cdnList) {
+      try {
+        await loadScript(url);
+        if (window.HeyGen?.StreamingAvatar) {
+          ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
+          console.log('[DTI/Avatar] SDK UMD caricato da', url);
+          return;
+        }
+      } catch (e) {
+        console.warn('[DTI/Avatar] Tentativo fallito:', url, e.message);
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('Impossibile caricare l’SDK HeyGen UMD');
 }
 
     async function initAvatarIfAvailable() {

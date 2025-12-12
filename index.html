@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>DTI – Digital Twin Instructor</title>
+  <title>o</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -100,11 +100,11 @@
     const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
     const history = [];
 
-    /* === HEYGEN: inserisci i tuoi ID quando li hai === */
-    const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b"; // <-- sostituisci con il tuo ID avatar interattivo
+    /* === : inserisci i tuoi ID quando li hai === */
+    const _AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b"; // <-- sostituisci con il tuo ID avatar interattivo
     /* ================================================ */
 
-    // Avatar opzionale (parte quando Vercel ha HEYGEN_API_KEY)
+    // Avatar opzionale (parte quando Vercel ha _API_KEY)
     const MAX_SESSION_MS = 9 * 60 * 1000;
     let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
@@ -132,7 +132,7 @@
 
   async function loadSDK() {
     // se già caricato, esci
-    if (window.HeyGen?.StreamingAvatar) {
+    if (window.?.StreamingAvatar) {
       ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
       return;
     }

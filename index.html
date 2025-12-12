@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>Assistente alla privacy per il sistema sanitario italiano</title>
+  <title>DTI – Digital Twin Instructor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -39,7 +39,13 @@
     #status { margin:10px 0 16px; color:var(--muted); font-size:14px; }
 
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
-    #chat { height:min(52vh,420px); overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:10px; }
+    /* Chat: area messaggi con scrollbar visibile */
+    .chat-shell { display:flex; flex-direction:column; gap:12px; }
+    #chat {
+      height:min(52vh,420px); overflow-y:auto; padding:6px;
+      display:flex; flex-direction:column; gap:10px;
+      border-radius:10px;
+    }
     #chat::-webkit-scrollbar { width:10px; }
     #chat::-webkit-scrollbar-track { background:#0c0e13; border-radius:10px; }
     #chat::-webkit-scrollbar-thumb { background:#2b3342; border-radius:10px; }
@@ -50,12 +56,13 @@
     .msg.assistant { align-self:flex-start; background:var(--you); color:#eaecef; border-bottom-left-radius:6px; }
     .time { display:block; margin-top:6px; color:#b1b7c0; font-size:12px; }
 
-    .row { display:flex; gap:8px; margin-top:12px; }
+    /* Riga input “sticky” sotto al box messaggi */
+    .composer { display:flex; gap:8px; align-items:center; }
     input#q { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:#0d1016; color:#fff; }
     button { padding:12px 16px; border-radius:10px; border:0; background:var(--accent); color:#001018; font-weight:600; cursor:pointer; }
     button[disabled] { opacity:.6; cursor:not-allowed; }
 
-    .muted { color:var(--muted); font-size:13px; margin-top:8px; }
+    .muted { color:var(--muted); font-size:13px; }
   </style>
 </head>
 <body>
@@ -74,17 +81,19 @@
 
     <!-- Chat -->
     <div class="panel">
-      <div id="chat" aria-live="polite" aria-label="Conversazione"></div>
-      <div class="row">
-        <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" autocomplete="off" />
-        <button id="ask">Invia</button>
+      <div class="chat-shell">
+        <div id="chat" aria-live="polite" aria-label="Conversazione"></div>
+        <div class="composer">
+          <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" autocomplete="off" />
+          <button id="ask">Invia</button>
+        </div>
+        <div id="log" class="muted"></div>
       </div>
-      <div id="log" class="muted"></div>
     </div>
   </div>
 
   <script type="module">
-    const API_BASE = ""; // percorsi relativi
+    const API_BASE = ""; // percorsi relativi (es. /api/chat)
     const $ = id => document.getElementById(id);
 
     const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
@@ -92,89 +101,95 @@
     const history = [];
 
     /* === HEYGEN: inserisci i tuoi ID quando li hai === */
-    const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b"; // <-- sostituisci
+    const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b"; // <-- sostituisci con il tuo ID avatar interattivo
     /* ================================================ */
-function setPh(msg) {
-  const ph = document.getElementById("avatarPh");
-  if (ph) ph.textContent = msg;
-  console.log("[DTI/Avatar]", msg);
-}
 
     // Avatar opzionale (parte quando Vercel ha HEYGEN_API_KEY)
     const MAX_SESSION_MS = 9 * 60 * 1000;
     let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
-    async function loadSDK() {
-  try {
-    ({ default: StreamingAvatar, StreamingEvents } =
-      await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.js"));
-    console.log("[DTI/Avatar] SDK caricato (unpkg)");
-  } catch (e) {
-    console.warn("[DTI/Avatar] unpkg fallito, provo jsdelivr", e);
-    ({ default: StreamingAvatar, StreamingEvents } =
-      await import("https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar/dist/index.js"));
-    console.log("[DTI/Avatar] SDK caricato (jsdelivr)");
-  }
-}
-
-async function initAvatarIfAvailable() {
-  try {
-    setPh("Richiesta token…");
-    const r = await fetch(`/api/get-heygen-token`, { method: "POST" });
-    const j = await r.json();
-    if (!r.ok || !j?.token) throw new Error(JSON.stringify(j || {error:"no_token"}));
-    console.log("[DTI/Avatar] Token OK", j?._via || "");
-    setPh("Token OK. Carico SDK…");
-
-    await loadSDK();
-
-    setPh("SDK OK. Creo lo stream…");
-    avatar = new StreamingAvatar({ token: j.token });
-
-    avatar.on(StreamingEvents.STREAM_READY, (e) => {
-      console.log("[DTI/Avatar] STREAM_READY");
-      // nascondi placeholder, mostra video
+    // Helper per aggiornare il placeholder e loggare
+    function setPh(msg) {
       const ph = document.getElementById("avatarPh");
-      if (ph) ph.style.display = "none";
-      videoEl.srcObject = e.detail;
-      videoEl.style.display = "block";
-      videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once: true });
-      videoEl.play();
-      statusEl.textContent = "Avatar pronto. Fai una domanda.";
-      startedAt = Date.now();
-      rotateTimer && clearInterval(rotateTimer);
-      rotateTimer = setInterval(() => {
-        if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
-      }, 10000);
-    });
+      if (ph) ph.textContent = msg;
+      console.log("[DTI/Avatar]", msg);
+    }
 
-    avatar.on(StreamingEvents.STREAM_DISCONNECTED, (e) => {
-      console.warn("[DTI/Avatar] STREAM_DISCONNECTED", e);
-      restartAvatar();
-    });
-    avatar.on(StreamingEvents.ERROR, (e) => {
-      console.error("[DTI/Avatar] STREAM_ERROR", e);
-      setPh("Errore di streaming. Riprovo…");
-      restartAvatar();
-    });
+    // Carica SDK in UMD (compatibile browser/Wix)
+    async function loadSDK() {
+      if (window.HeyGen?.StreamingAvatar) {
+        ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
+        return;
+      }
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar/dist/index.umd.js';
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
+    }
 
-    const startOpts = { quality: "high" };
-    if (HEYGEN_AVATAR_ID) startOpts.avatarId = HEYGEN_AVATAR_ID;
-    if (HEYGEN_VOICE_ID)  startOpts.voiceId  = HEYGEN_VOICE_ID;
+    async function initAvatarIfAvailable() {
+      try {
+        setPh("Richiesta token…");
+        const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
+        const j = await r.json();
+        if (!r.ok || !j?.token) throw new Error((j && j.error) || "no_token");
+        setPh("Token OK. Carico SDK…");
 
-    console.log("[DTI/Avatar] createStartAvatar", startOpts);
-    setPh("Avvio avatar…");
-    await avatar.createStartAvatar(startOpts);
-    // da qui attendiamo STREAM_READY
-  } catch (err) {
-  console.error("[DTI/Avatar] init error", err);
-  statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
-  const ph = document.getElementById("avatarPh");
-  if (ph) ph.textContent = "Errore avatar: " + (err?.message || JSON.stringify(err));
-}
+        await loadSDK();
+        setPh("SDK OK. Creo lo stream…");
 
-}
+        avatar = new StreamingAvatar({ token: j.token });
 
+        avatar.on(StreamingEvents.STREAM_READY, (e) => {
+          console.log("[DTI/Avatar] STREAM_READY");
+          // nascondi placeholder, mostra video
+          const ph = document.getElementById("avatarPh");
+          if (ph) ph.style.display = "none";
+          videoEl.srcObject = e.detail;
+          videoEl.style.display = "block";
+          // primo click sblocca l’audio (policy browser)
+          videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once: true });
+          videoEl.play();
+          statusEl.textContent = "Avatar pronto. Fai una domanda.";
+          startedAt = Date.now();
+
+          // rinnovo sessione prima dei 10'
+          rotateTimer && clearInterval(rotateTimer);
+          rotateTimer = setInterval(() => {
+            if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
+          }, 10000);
+        });
+
+        avatar.on(StreamingEvents.STREAM_DISCONNECTED, (e) => {
+          console.warn("[DTI/Avatar] STREAM_DISCONNECTED", e);
+          setPh("Connessione interrotta. Riavvio…");
+          restartAvatar();
+        });
+        avatar.on(StreamingEvents.ERROR, (e) => {
+          console.error("[DTI/Avatar] STREAM_ERROR", e);
+          setPh("Errore di streaming. Riprovo…");
+          restartAvatar();
+        });
+
+        const startOpts = { quality: "high" };
+        if (HEYGEN_AVATAR_ID) startOpts.avatarId = HEYGEN_AVATAR_ID;
+        if (HEYGEN_VOICE_ID)  startOpts.voiceId  = HEYGEN_VOICE_ID;
+
+        console.log("[DTI/Avatar] createStartAvatar", startOpts);
+        setPh("Avvio avatar…");
+        await avatar.createStartAvatar(startOpts);
+        // Attendi STREAM_READY
+      } catch (err) {
+        console.error("[DTI/Avatar] init error", err);
+        statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
+        setPh("Impossibile avviare l’avatar. La chat testuale è attiva.");
+      }
+    }
 
     async function restartAvatar() {
       try { if (avatar?.stopAvatar) await avatar.stopAvatar(); if (avatar?.stop) await avatar.stop(); } catch {}
@@ -195,7 +210,7 @@ async function initAvatarIfAvailable() {
       t.textContent = now();
       b.appendChild(t);
       chatEl.appendChild(b);
-      chatEl.scrollTop = chatEl.scrollHeight;
+      chatEl.scrollTop = chatEl.scrollHeight; // scroll in basso
     }
 
     // Invio con Enter (Shift+Enter = nuova riga)
@@ -228,8 +243,9 @@ async function initAvatarIfAvailable() {
         appendMsg("assistant", safe);
         logEl.textContent = "";
 
+        // Se l’avatar è attivo, parla
         if (avatar) {
-          try { await avatar.speak({ text: safe }); } catch {}
+          try { await avatar.speak({ text: safe }); } catch (e) { console.warn("speak error", e); }
         }
       } catch {
         logEl.textContent = "Errore nel recupero della risposta. Riprova.";

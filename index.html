@@ -95,56 +95,86 @@
     const HEYGEN_AVATAR_ID = "sk_V2_hgu_kD5QlnHFVjg_3mLTtLvQHpBBGVtBLrt4o2MW04ykXEAI"; // <-- sostituisci
     const HEYGEN_VOICE_ID  = "";              // opzionale (voce ITA)
     /* ================================================ */
+function setPh(msg) {
+  const ph = document.getElementById("avatarPh");
+  if (ph) ph.textContent = msg;
+  console.log("[DTI/Avatar]", msg);
+}
 
     // Avatar opzionale (parte quando Vercel ha HEYGEN_API_KEY)
     const MAX_SESSION_MS = 9 * 60 * 1000;
     let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
     async function loadSDK() {
-      ({ default: StreamingAvatar, StreamingEvents } =
-        await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.js"));
-    }
+  try {
+    ({ default: StreamingAvatar, StreamingEvents } =
+      await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.js"));
+    console.log("[DTI/Avatar] SDK caricato (unpkg)");
+  } catch (e) {
+    console.warn("[DTI/Avatar] unpkg fallito, provo jsdelivr", e);
+    ({ default: StreamingAvatar, StreamingEvents } =
+      await import("https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar/dist/index.js"));
+    console.log("[DTI/Avatar] SDK caricato (jsdelivr)");
+  }
+}
 
-    async function initAvatarIfAvailable() {
-      try {
-        const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
-        const j = await r.json();
-        if (!r.ok || !j?.token) throw new Error("no_token");
+async function initAvatarIfAvailable() {
+  try {
+    setPh("Richiesta token…");
+    const r = await fetch(`/api/get-heygen-token`, { method: "POST" });
+    const j = await r.json();
+    if (!r.ok || !j?.token) throw new Error(JSON.stringify(j || {error:"no_token"}));
+    console.log("[DTI/Avatar] Token OK", j?._via || "");
+    setPh("Token OK. Carico SDK…");
 
-        await loadSDK();
-        avatar = new StreamingAvatar({ token: j.token });
+    await loadSDK();
 
-        avatar.on(StreamingEvents.STREAM_READY, (e) => {
-          // nascondi placeholder, mostra video
-          const ph = document.getElementById("avatarPh");
-          if (ph) ph.style.display = "none";
-          videoEl.srcObject = e.detail;
-          videoEl.style.display = "block";
-          // primo click sblocca l’audio (policy browser)
-          videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once: true });
-          videoEl.play();
-          statusEl.textContent = "Avatar pronto. Fai una domanda.";
-          startedAt = Date.now();
+    setPh("SDK OK. Creo lo stream…");
+    avatar = new StreamingAvatar({ token: j.token });
 
-          // rinnovo sessione prima dei 10'
-          rotateTimer && clearInterval(rotateTimer);
-          rotateTimer = setInterval(() => {
-            if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
-          }, 10000);
-        });
+    avatar.on(StreamingEvents.STREAM_READY, (e) => {
+      console.log("[DTI/Avatar] STREAM_READY");
+      // nascondi placeholder, mostra video
+      const ph = document.getElementById("avatarPh");
+      if (ph) ph.style.display = "none";
+      videoEl.srcObject = e.detail;
+      videoEl.style.display = "block";
+      videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once: true });
+      videoEl.play();
+      statusEl.textContent = "Avatar pronto. Fai una domanda.";
+      startedAt = Date.now();
+      rotateTimer && clearInterval(rotateTimer);
+      rotateTimer = setInterval(() => {
+        if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
+      }, 10000);
+    });
 
-        avatar.on(StreamingEvents.STREAM_DISCONNECTED, restartAvatar);
-        avatar.on(StreamingEvents.ERROR, restartAvatar);
+    avatar.on(StreamingEvents.STREAM_DISCONNECTED, (e) => {
+      console.warn("[DTI/Avatar] STREAM_DISCONNECTED", e);
+      restartAvatar();
+    });
+    avatar.on(StreamingEvents.ERROR, (e) => {
+      console.error("[DTI/Avatar] STREAM_ERROR", e);
+      setPh("Errore di streaming. Riprovo…");
+      restartAvatar();
+    });
 
-        const startOpts = { quality: "high" };
-        if (HEYGEN_AVATAR_ID) startOpts.avatarId = HEYGEN_AVATAR_ID;
-        if (HEYGEN_VOICE_ID)  startOpts.voiceId  = HEYGEN_VOICE_ID;
-        await avatar.createStartAvatar(startOpts);
-      } catch {
-        // nessun token o errore → lascia il placeholder
-        statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
-      }
-    }
+    const startOpts = { quality: "high" };
+    if (HEYGEN_AVATAR_ID) startOpts.avatarId = HEYGEN_AVATAR_ID;
+    if (HEYGEN_VOICE_ID)  startOpts.voiceId  = HEYGEN_VOICE_ID;
+
+    console.log("[DTI/Avatar] createStartAvatar", startOpts);
+    setPh("Avvio avatar…");
+    await avatar.createStartAvatar(startOpts);
+    // da qui attendiamo STREAM_READY
+  } catch (err) {
+    console.error("[DTI/Avatar] init error", err);
+    statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
+    setPh("Impossibile avviare l’avatar. La chat testuale è attiva.");
+    // NON nascondere il riquadro: lasciamo il placeholder visibile
+  }
+}
+
 
     async function restartAvatar() {
       try { if (avatar?.stopAvatar) await avatar.stopAvatar(); if (avatar?.stop) await avatar.stop(); } catch {}

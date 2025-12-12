@@ -149,15 +149,8 @@
         restartAvatar();
       });
 
-      // >>> QUI: startOpts DENTRO la init, subito prima dello start <<<
-      const startOpts = { quality: "low", language: "it" };  // “low” per test, poi “high”
-
-// usa l’ID che hai copiato da HeyGen
-if (HEYGEN_AVATAR_ID) {
-  startOpts.avatarName = HEYGEN_AVATAR_ID;   // ← parametro corretto per lo streaming SDK
-  // startOpts.avatarId = HEYGEN_AVATAR_ID;  // (legacy) solo se stai usando una demo vecchia
-}
-
+      // start minimale per test
+const startOpts = { quality: "low", language: "it" };
 console.log("[DTI/Avatar] createStartAvatar opts", startOpts);
 await avatar.createStartAvatar(startOpts);
 

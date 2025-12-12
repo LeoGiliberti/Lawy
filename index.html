@@ -146,23 +146,11 @@ async function initAvatarIfAvailable() {
       restartAvatar();
     });
 
-    const startOpts = { quality: "high" };
-    if (HEYGEN_AVATAR_ID) startOpts.avatarId = HEYGEN_AVATAR_ID;
-    if (HEYGEN_VOICE_ID)  startOpts.voiceId  = HEYGEN_VOICE_ID;
+    const startOpts = { quality: "low" }; // parti "low" per testare
 
-    console.log("[DTI/Avatar] createStartAvatar", startOpts);
-    setPh("Avvio avatar…");
-    await avatar.createStartAvatar(startOpts);
-    // attendo STREAM_READY
-  } catch (err) {
-    console.error("[DTI/Avatar] init error", err);
-    const msg =
-      (err && (err.detail?.message || err.message)) ||
-      (typeof err === "string" ? err : JSON.stringify(err));
-    document.getElementById("status").textContent =
-      "Modalità chat testuale (avatar non configurato).";
-    setPh("Errore avatar: " + (msg || "init_failed"));
-  }
+// passa l'ID solo se è un Interactive Avatar valido
+if (typeof HEYGEN_AVATAR_ID === "string" && /^avtr_/.test(HEYGEN_AVATAR_ID)) {
+  startOpts.avatarId = HEYGEN_AVATAR_ID;
 }
 
 async function restartAvatar() {

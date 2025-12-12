@@ -163,10 +163,11 @@
           }, 10000);
         });
 
-        avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
-          console.warn("[DTI/Avatar] STREAM_DISCONNECTED");
-          setPh("Connessione interrotta. Riavvio…");
-          restartAvatar();
+      avatar.on(StreamingEvents.ERROR, (e) => {
+  const m = e?.detail?.message || e?.message || (typeof e === "string" ? e : JSON.stringify(e));
+  console.error("[DTI/Avatar] STREAM_ERROR", e);
+  setPh("Errore streaming: " + (m || "unknown_error"));
+  restartAvatar();
         });
         avatar.on(StreamingEvents.ERROR, (e) => {
           console.error("[DTI/Avatar] STREAM_ERROR", e);
@@ -181,11 +182,15 @@
         console.log("[DTI/Avatar] createStartAvatar", startOpts);
         setPh("Avvio avatar…");
         await avatar.createStartAvatar(startOpts);
-      } catch (err) {
-        console.error("[DTI/Avatar] init error", err);
-        statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
-        setPh("Impossibile avviare l’avatar. La chat testuale è attiva.");
-      }
+      } } catch (err) {
+  console.error("[Niccolò Musmeci] init error", err);
+  const msg =
+    (err && (err.detail?.message || err.message)) ||
+    (typeof err === "string" ? err : JSON.stringify(err));
+  statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
+  setPh("Errore avatar: " + (msg || "init_failed"));
+}
+
     }
 
     async function restartAvatar() {

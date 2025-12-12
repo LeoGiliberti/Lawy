@@ -124,6 +124,7 @@
         videoEl.play();
         statusEl.textContent = "Avatar pronto. Fai una domanda.";
         startedAt = Date.now();
+        avatar.speak({ text: "Ciao! Dimmi pure la tua domanda." });  // <— TEST: deve animare bocca
 
         // rinnovo prima dei 10'
         rotateTimer && clearInterval(rotateTimer);

@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>o</title>
+  <title>DTI – Digital Twin Instructor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -16,47 +16,34 @@
     h1 { margin:0 0 8px; font-size:clamp(20px,4vw,30px); font-weight:650; }
     .sub { color:var(--muted); margin-bottom:14px; }
 
-    /* Riquadro avatar sempre visibile */
     .video-wrap {
-      position: relative;
-      background:#000;
-      border:1px solid var(--border);
-      border-radius:12px;
-      overflow:hidden;
-      aspect-ratio:16/9;
-      min-height:220px; /* fallback */
+      position: relative; background:#000; border:1px solid var(--border);
+      border-radius:12px; overflow:hidden; aspect-ratio:16/9; min-height:220px;
     }
-    video {
-      display:none; /* si mostra quando lo stream è pronto */
-      width:100%; height:auto; background:#000;
-    }
+    video { display:none; width:100%; height:auto; background:#000; }
     .avatar-placeholder {
-      position:absolute; inset:0;
-      display:flex; align-items:center; justify-content:center;
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
       color:#9aa0a6; font-size:14px; text-align:center; padding:0 12px;
     }
 
     #status { margin:10px 0 16px; color:var(--muted); font-size:14px; }
 
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
-    /* Chat: area messaggi con scrollbar visibile */
     .chat-shell { display:flex; flex-direction:column; gap:12px; }
     #chat {
       height:min(52vh,420px); overflow-y:auto; padding:6px;
-      display:flex; flex-direction:column; gap:10px;
-      border-radius:10px;
+      display:flex; flex-direction:column; gap:10px; border-radius:10px;
+      scrollbar-color:#2b3342 #0c0e13; scrollbar-width:thin;
     }
     #chat::-webkit-scrollbar { width:10px; }
     #chat::-webkit-scrollbar-track { background:#0c0e13; border-radius:10px; }
     #chat::-webkit-scrollbar-thumb { background:#2b3342; border-radius:10px; }
-    #chat { scrollbar-color:#2b3342 #0c0e13; scrollbar-width:thin; }
 
     .msg { max-width:78%; padding:10px 12px; border-radius:12px; line-height:1.35; font-size:15px; white-space:pre-wrap; word-wrap:break-word; }
     .msg.user { align-self:flex-end; background:var(--me); color:#fff; border-bottom-right-radius:6px; }
     .msg.assistant { align-self:flex-start; background:var(--you); color:#eaecef; border-bottom-left-radius:6px; }
     .time { display:block; margin-top:6px; color:#b1b7c0; font-size:12px; }
 
-    /* Riga input “sticky” sotto al box messaggi */
     .composer { display:flex; gap:8px; align-items:center; }
     input#q { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:#0d1016; color:#fff; }
     button { padding:12px 16px; border-radius:10px; border:0; background:var(--accent); color:#001018; font-weight:600; cursor:pointer; }
@@ -70,7 +57,6 @@
     <h1>DTI – Digital Twin Instructor</h1>
     <div class="sub">Interroga il corpus curato. L’avatar interpreta le risposte in italiano.</div>
 
-    <!-- Avatar: video + placeholder sempre visibile -->
     <div class="video-wrap">
       <video id="avatarVideo" autoplay playsinline muted></video>
       <div id="avatarPh" class="avatar-placeholder">
@@ -79,7 +65,6 @@
     </div>
     <div id="status">Modalità chat testuale (avatar non configurato).</div>
 
-    <!-- Chat -->
     <div class="panel">
       <div class="chat-shell">
         <div id="chat" aria-live="polite" aria-label="Conversazione"></div>
@@ -93,72 +78,60 @@
   </div>
 
   <script type="module">
-    const API_BASE = ""; // percorsi relativi (es. /api/chat)
+    const API_BASE = ""; // percorsi relativi (/api/*)
     const $ = id => document.getElementById(id);
-
     const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
     const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
     const history = [];
 
-    /* === : inserisci i tuoi ID quando li hai === */
-    const _AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b"; // <-- sostituisci con il tuo ID avatar interattivo
-    /* ================================================ */
+    /* === HEYGEN: metti i tuoi ID (puoi lasciare avatarId vuoto per test) === */
+    const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b";              // es. "avtr_XXXXXXXX"
+    const HEYGEN_VOICE_ID  = "";              // opzionale: voiceID ITA
+    /* ====================================================================== */
 
-    // Avatar opzionale (parte quando Vercel ha _API_KEY)
     const MAX_SESSION_MS = 9 * 60 * 1000;
     let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
 
-    // Helper per aggiornare il placeholder e loggare
     function setPh(msg) {
       const ph = document.getElementById("avatarPh");
       if (ph) ph.textContent = msg;
       console.log("[DTI/Avatar]", msg);
     }
 
-<script type="module">
-  // ... il resto del tuo script
-
-  // helper per caricare script
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error(`CDN load failed: ${src}`));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function loadSDK() {
-    // se già caricato, esci
-    if (window.?.StreamingAvatar) {
-      ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
-      return;
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src; s.async = true;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`CDN load failed: ${src}`));
+        document.head.appendChild(s);
+      });
     }
-    // Prova più CDN sulla build UMD (compatibile browser/Wix)
-    const cdnList = [
-      'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
-      'https://unpkg.com/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
-      'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar/dist/index.umd.js',
-      'https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js'
-    ];
-    let lastErr;
-    for (const url of cdnList) {
-      try {
-        await loadScript(url);
-        if (window.HeyGen?.StreamingAvatar) {
-          ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
-          console.log('[DTI/Avatar] SDK UMD caricato da', url);
-          return;
-        }
-      } catch (e) {
-        console.warn('[DTI/Avatar] Tentativo fallito:', url, e.message);
-        lastErr = e;
+
+    // Carico SOLO la build UMD da CDN (nessun import ESM)
+    async function loadSDK() {
+      if (window.HeyGen?.StreamingAvatar) {
+        ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
+        return;
       }
+      const cdnList = [
+        'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
+        'https://unpkg.com/@heygen/streaming-avatar@2.1.0/dist/index.umd.js'
+      ];
+      for (const url of cdnList) {
+        try {
+          await loadScript(url);
+          if (window.HeyGen?.StreamingAvatar) {
+            ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
+            console.log('[DTI/Avatar] SDK UMD caricato da', url);
+            return;
+          }
+        } catch(e) {
+          console.warn('[DTI/Avatar] Tentativo fallito:', url, e.message);
+        }
+      }
+      throw new Error('Impossibile caricare l’SDK HeyGen UMD');
     }
-    throw lastErr || new Error('Impossibile caricare l’SDK HeyGen UMD');
-}
 
     async function initAvatarIfAvailable() {
       try {
@@ -175,26 +148,23 @@
 
         avatar.on(StreamingEvents.STREAM_READY, (e) => {
           console.log("[DTI/Avatar] STREAM_READY");
-          // nascondi placeholder, mostra video
           const ph = document.getElementById("avatarPh");
           if (ph) ph.style.display = "none";
           videoEl.srcObject = e.detail;
           videoEl.style.display = "block";
-          // primo click sblocca l’audio (policy browser)
           videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once: true });
           videoEl.play();
           statusEl.textContent = "Avatar pronto. Fai una domanda.";
           startedAt = Date.now();
 
-          // rinnovo sessione prima dei 10'
           rotateTimer && clearInterval(rotateTimer);
           rotateTimer = setInterval(() => {
             if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
           }, 10000);
         });
 
-        avatar.on(StreamingEvents.STREAM_DISCONNECTED, (e) => {
-          console.warn("[DTI/Avatar] STREAM_DISCONNECTED", e);
+        avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
+          console.warn("[DTI/Avatar] STREAM_DISCONNECTED");
           setPh("Connessione interrotta. Riavvio…");
           restartAvatar();
         });
@@ -211,7 +181,6 @@
         console.log("[DTI/Avatar] createStartAvatar", startOpts);
         setPh("Avvio avatar…");
         await avatar.createStartAvatar(startOpts);
-        // Attendi STREAM_READY
       } catch (err) {
         console.error("[DTI/Avatar] init error", err);
         statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
@@ -224,66 +193,42 @@
       await initAvatarIfAvailable();
     }
 
-    // Helpers UI
-    function now() {
-      const d = new Date();
-      return d.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' });
-    }
+    function now() { return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
     function appendMsg(role, text) {
       const b = document.createElement("div");
       b.className = `msg ${role}`;
       b.textContent = text;
       const t = document.createElement("span");
-      t.className = "time";
-      t.textContent = now();
+      t.className = "time"; t.textContent = now();
       b.appendChild(t);
       chatEl.appendChild(b);
-      chatEl.scrollTop = chatEl.scrollHeight; // scroll in basso
+      chatEl.scrollTop = chatEl.scrollHeight;
     }
 
-    // Invio con Enter (Shift+Enter = nuova riga)
     qEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        askBtn.click();
-      }
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askBtn.click(); }
     });
 
     askBtn.addEventListener("click", async () => {
       const msg = qEl.value.trim();
       if (!msg) return;
-      qEl.value = "";
-      askBtn.disabled = true;
-      logEl.textContent = "Sto chiedendo al DTI…";
+      qEl.value = ""; askBtn.disabled = true; logEl.textContent = "Sto chiedendo al DTI…";
 
-      history.push({ role: "user", content: msg });
-      appendMsg("user", msg);
-
+      history.push({ role: "user", content: msg }); appendMsg("user", msg);
       try {
         const r = await fetch(`${API_BASE}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: msg, history: history.slice(-6) })
         });
         const { answer } = await r.json();
         const safe = (answer || "").toString().trim() || "Non ho una risposta in questo momento.";
-        history.push({ role: "assistant", content: safe });
-        appendMsg("assistant", safe);
-        logEl.textContent = "";
-
-        // Se l’avatar è attivo, parla
-        if (avatar) {
-          try { await avatar.speak({ text: safe }); } catch (e) { console.warn("speak error", e); }
-        }
+        history.push({ role: "assistant", content: safe }); appendMsg("assistant", safe); logEl.textContent = "";
+        if (avatar) { try { await avatar.speak({ text: safe }); } catch (e) { console.warn("speak error", e); } }
       } catch {
         logEl.textContent = "Errore nel recupero della risposta. Riprova.";
-      } finally {
-        askBtn.disabled = false;
-        qEl.focus();
-      }
+      } finally { askBtn.disabled = false; qEl.focus(); }
     });
 
-    // Avvio
     initAvatarIfAvailable();
   </script>
 </body>

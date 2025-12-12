@@ -77,6 +77,14 @@
     </div>
   </div>
 
+  <script type="importmap">
+{
+  "imports": {
+    "livekit-client": "https://cdn.jsdelivr.net/npm/livekit-client@2.16.1/dist/livekit-client.esm.mjs"
+  }
+}
+</script>
+
   <script type="module">
     const API_BASE = ""; // percorsi relativi (/api/*)
     const $ = id => document.getElementById(id);
@@ -109,11 +117,19 @@
     }
 
     // Carico SOLO la build UMD da CDN (nessun import ESM)
-    async function loadSDK() {
-      if (window.HeyGen?.StreamingAvatar) {
-        ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
-        return;
-      }
+  <script type="module">
+  let StreamingAvatar, StreamingEvents;
+
+  async function loadSDK() {
+    // carica l’ESM reale del pacchetto
+    const mod = await import('https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/lib/index.esm.js');
+    StreamingAvatar = mod.default;
+    StreamingEvents = mod.StreamingEvents;
+    console.log('[DTI/Avatar] SDK ESM caricato');
+  }
+
+  // …il resto del tuo script resta invariato (initAvatarIfAvailable, ecc.)
+
       const cdnList = [
         'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/dist/index.umd.js',
         'https://unpkg.com/@heygen/streaming-avatar@2.1.0/dist/index.umd.js'

@@ -115,22 +115,16 @@
       console.log("[DTI/Avatar]", msg);
     }
 
-    // Carica SDK in UMD (compatibile browser/Wix)
     async function loadSDK() {
-      if (window.HeyGen?.StreamingAvatar) {
-        ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
-        return;
-      }
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar/dist/index.umd.js';
-        s.async = true;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-      ({ StreamingAvatar, StreamingEvents } = window.HeyGen);
-    }
+  if (StreamingAvatar && StreamingEvents) return;
+  // Import ESM ufficiale dal CDN
+  const mod = await import('https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/lib/index.esm.js');
+  // Esportazioni ESM (named exports)
+  const { StreamingAvatar: SA, StreamingEvents: SE } = mod || {};
+  if (!SA || !SE) throw new Error('SDK ESM missing exports');
+  StreamingAvatar = SA;
+  StreamingEvents = SE;
+}
 
     async function initAvatarIfAvailable() {
       try {

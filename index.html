@@ -2,258 +2,258 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>Niccolò Musmeci</title>
+  <title>DTI – Digital Twin Instructor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --bg:#0b0c10; --panel:#0f1115; --text:#e6e6e6; --muted:#9aa0a6; --accent:#5ac8fa; --me:#1f6feb; --you:#2a2f3a; --border:#1c1f26; }
-    html,body { height:100%; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; background:var(--bg); color:var(--text); }
-    .wrap { max-width:980px; margin:0 auto; padding:20px; }
-    h1 { margin:0 0 4px; font-size:clamp(20px,4vw,30px); font-weight:650; }
-    .sub { color:var(--muted); margin-bottom:10px; }
-    .ver { color:#7a838f; font-size:12px; margin-bottom:14px; }
+    :root{
+      --bg:#0b0c10;
+      --panel:#0f1115;
+      --text:#ffffff;
+      --muted:#9aa0a6;
+      --accent:#5ac8fa;
+      --bubble:#12151c;
+      --bubbleMe:#182331;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    }
 
-    .video-wrap { position: relative; background:#000; border:1px solid var(--border); border-radius:12px; overflow:hidden; aspect-ratio:16/9; min-height:220px; }
-    video { display:none; width:100%; height:auto; background:#000; }
-    .avatar-placeholder { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#9aa0a6; font-size:14px; text-align:center; padding:0 12px; }
-    #status { margin:10px 0 16px; color:var(--muted); font-size:14px; }
+    /* Layout 2 colonne */
+    .app{
+      max-width:1200px; margin:0 auto; padding:20px;
+      display:grid; gap:16px;
+      grid-template-columns: 1fr 1.1fr;
+    }
+    @media (max-width:980px){
+      .app{ grid-template-columns:1fr; }
+    }
 
-    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; }
-    .chat-shell { display:flex; flex-direction:column; gap:12px; }
-    #chat { height:min(52vh,420px); overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:10px; border-radius:10px; scrollbar-color:#2b3342 #0c0e13; scrollbar-width:thin; }
-    #chat::-webkit-scrollbar { width:10px; } #chat::-webkit-scrollbar-track { background:#0c0e13; border-radius:10px; } #chat::-webkit-scrollbar-thumb { background:#2b3342; border-radius:10px; }
-    .msg { max-width:78%; padding:10px 12px; border-radius:12px; line-height:1.35; font-size:15px; white-space:pre-wrap; word-wrap:break-word; }
-    .msg.user { align-self:flex-end; background:var(--me); color:#fff; border-bottom-right-radius:6px; }
-    .msg.assistant { align-self:flex-start; background:var(--you); color:#eaecef; border-bottom-left-radius:6px; }
-    .time { display:block; margin-top:6px; color:#b1b7c0; font-size:12px; }
-    .composer { display:flex; gap:8px; align-items:center; }
-    input#q { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:#0d1016; color:#fff; }
-    button { padding:12px 16px; border-radius:10px; border:0; background:var(--accent); color:#001018; font-weight:600; cursor:pointer; }
-    button[disabled] { opacity:.6; cursor:not-allowed; }
-    .muted { color:var(--muted); font-size:13px; }
+    /* Pannelli */
+    .panel{
+      background:var(--panel);
+      border:1px solid #151922;
+      border-radius:var(--radius);
+      padding:14px;
+      position:relative;
+      min-height:360px;
+      box-shadow:0 6px 18px rgba(0,0,0,.24);
+    }
+
+    /* Avatar / Video */
+    .avatar-wrap{
+      position:relative; overflow:hidden; padding:0; min-height:420px;
+    }
+    .avatar-video{
+      width:100%; height:100%; display:block; background:#000;
+      border-radius:var(--radius);
+      object-fit:cover;
+    }
+    /* Overlay titolo/sottotitolo sul video */
+    .overlay{
+      position:absolute; left:0; right:0; bottom:0; padding:18px;
+      background:linear-gradient(180deg,rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 50%, rgba(0,0,0,.72) 100%);
+      border-bottom-left-radius: var(--radius);
+      border-bottom-right-radius: var(--radius);
+      pointer-events:none;
+    }
+    .title{ margin:0; font-weight:700; font-size:clamp(18px,3.2vw,28px); }
+    .subtitle{ margin:6px 0 0; color:var(--muted); font-size:clamp(12px,2.4vw,16px); }
+
+    /* Chat a destra: area messaggi + input */
+    .chat{
+      display:flex; flex-direction:column; gap:12px; min-height:420px;
+    }
+    .chat-box{
+      flex:1; min-height:280px; max-height:58vh;
+      overflow-y:auto; background:var(--bubble);
+      border-radius:var(--radius); padding:14px;
+      border:1px solid #1a2130;
+      scroll-behavior:smooth;
+    }
+    /* Scrollbar visibile/custom */
+    .chat-box::-webkit-scrollbar{ width:10px; }
+    .chat-box::-webkit-scrollbar-track{ background:#0e121a; border-radius:8px; }
+    .chat-box::-webkit-scrollbar-thumb{ background:#2a3446; border-radius:8px; }
+    .chat-box{ scrollbar-width:thin; scrollbar-color:#2a3446 #0e121a; }
+
+    .msg{ display:flex; margin:8px 0; }
+    .msg .bubble{
+      padding:10px 12px; border-radius:12px; line-height:1.35; max-width:88%;
+      white-space:pre-wrap; word-wrap:break-word;
+      border:1px solid rgba(255,255,255,.06);
+      box-shadow:0 2px 10px rgba(0,0,0,.18);
+    }
+    .msg.user{ justify-content:flex-end; }
+    .msg.user .bubble{ background:var(--bubbleMe); }
+    .msg.bot  .bubble{ background:#121720; }
+
+    .status{ color:var(--muted); font-size:13px; margin-top:6px; }
+
+    .row{
+      display:flex; gap:8px;
+    }
+    input[type="text"]{
+      flex:1; padding:12px 14px; border-radius:12px; border:1px solid #1b2330;
+      background:#0f1115; color:var(--text); outline:none;
+    }
+    button{
+      padding:12px 16px; border-radius:12px; border:0; cursor:pointer;
+      font-weight:600; color:#001018; background:var(--accent);
+    }
+
+    /* Placeholder avatar (quando non è pronto) */
+    .avatar-ph{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      color:var(--muted); background:#0a0c12; border-radius:var(--radius);
+      border:1px dashed #1c2330; text-align:center; padding:18px;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Niccolò Musmeci</h1>
-    <div class="sub">Assistente alla privacy per il sistema ospedaliero italiano</div>
-    <div class="ver">build: 2025-12-12 23:10</div>
+  <div class="app">
+    <!-- Colonna sinistra: AVATAR -->
+    <section class="panel avatar-wrap">
+      <video id="avatarVideo" class="avatar-video" autoplay playsinline muted></video>
+      <div id="avatarPh" class="avatar-ph">Avatar non disponibile (in attesa abilitazione streaming).<br/> La chat testuale è attiva.</div>
 
-    <div class="video-wrap">
-      <video id="avatarVideo" autoplay playsinline muted></video>
-      <div id="avatarPh" class="avatar-placeholder">Avatar non configurato (in attesa token). La chat testuale è attiva.</div>
-    </div>
-    <div id="status">Modalità chat testuale (avatar non configurato).</div>
-
-    <div class="panel">
-      <div class="chat-shell">
-        <div id="chat" aria-live="polite" aria-label="Conversazione"></div>
-        <div class="composer">
-          <input id="q" placeholder="Scrivi qui la tua domanda in italiano…" autocomplete="off" />
-          <button id="ask">Invia</button>
-        </div>
-        <div id="log" class="muted"></div>
+      <!-- Overlay Titolo/Sottotitolo -->
+      <div class="overlay">
+        <h1 class="title">Titolo</h1>
+        <p class="subtitle">Sottotitolo</p>
       </div>
-    </div>
+    </section>
+
+    <!-- Colonna destra: CHAT -->
+    <section class="panel chat">
+      <div id="chat" class="chat-box" aria-live="polite" aria-label="Messaggi precedenti"></div>
+
+      <div class="row">
+        <input id="q" type="text" placeholder="Scrivi qui…" autocomplete="off" />
+        <button id="ask" type="button">Invia</button>
+      </div>
+
+      <div id="status" class="status">Pronto.</div>
+    </section>
   </div>
 
-<script type="importmap">
-{
-  "imports": {
-    "livekit-client": "https://cdn.jsdelivr.net/npm/livekit-client@2.16.1/dist/livekit-client.esm.mjs",
-    "protobufjs": "https://esm.sh/protobufjs@7",
-    "protobufjs/minimal": "https://esm.sh/protobufjs@7/minimal",
-    "tslib": "https://cdn.jsdelivr.net/npm/tslib@2.6.2/tslib.es6.js"
-  }
-}
-</script>
-  
-<script type="module">
-  const API_BASE = ""; // usa percorsi relativi (/api/*)
+  <script type="module">
+    // =========================
+    // CONFIG / RIFERIMENTI DOM
+    // =========================
+    const API_BASE = ''; // percorsi relativi (Vercel)
+    const $ = id => document.getElementById(id);
+    const chatEl = $("chat"), qEl = $("q"), askBtn = $("ask"), statusEl = $("status");
+    const videoEl = $("avatarVideo"), phEl = $("avatarPh");
+    const history = [];
 
-  // ID avatar/voce HeyGen (puoi lasciare vuoto l’avatar per il primo test)
-  const HEYGEN_AVATAR_ID = "cb58c4a7e64e4f849b621df9a2aecb0b";            // es. "avtr_XXXXXXXX"
-  const HEYGEN_VOICE_ID  = "";            // opzionale
-
-  // Riferimenti UI
-  const $ = id => document.getElementById(id);
-  const statusEl = $("status"), logEl = $("log"), videoEl = $("avatarVideo");
-  const askBtn = $("ask"), qEl = $("q"), chatEl = $("chat");
-
-  // Stato chat e avatar
-  const history = [];
-  const MAX_SESSION_MS = 9 * 60 * 1000;
-  let StreamingAvatar, StreamingEvents, avatar = null, startedAt = 0, rotateTimer;
-
-  function setPh(msg) {
-    const ph = document.getElementById("avatarPh");
-    if (ph) ph.textContent = msg;
-    console.log("[DTI/Avatar]", msg);
-  }
-
-  // Carico l’SDK HeyGen (ESM) – richiede l’IMPORT MAP in <head> per livekit-client/protobufjs/tslib
-  async function loadSDK() {
-    if (StreamingAvatar && StreamingEvents) return;
-    const mod = await import('https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@2.1.0/lib/index.esm.js');
-    StreamingAvatar = mod.default;
-    StreamingEvents  = mod.StreamingEvents;
-    console.log("[DTI/Avatar] SDK ESM caricato");
-  }
-
-  async function initAvatarIfAvailable() {
-    try {
-      setPh("Richiesta token…");
-      const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method: "POST" });
-      const j = await r.json();
-      if (!r.ok || !j?.token) throw new Error((j && j.error) || "no_token");
-      setPh("Token OK. Carico SDK…");
-
-      await loadSDK();
-      setPh("SDK OK. Creo lo stream…");
-
-      avatar = new StreamingAvatar({ token: j.token });
-
-      avatar.on(StreamingEvents.STREAM_READY, (e) => {
-        console.log("[DTI/Avatar] STREAM_READY");
-        const ph = document.getElementById("avatarPh");
-        if (ph) ph.style.display = "none";
-        videoEl.srcObject = e.detail;
-        videoEl.style.display = "block";
-        // primo click sblocca l’audio per policy browser
-        videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once: true });
-        videoEl.play();
-        statusEl.textContent = "Avatar pronto. Fai una domanda.";
-        startedAt = Date.now();
-        
-        // rinnovo prima dei 10'
-        rotateTimer && clearInterval(rotateTimer);
-        rotateTimer = setInterval(() => {
-          if (Date.now() - startedAt > MAX_SESSION_MS) restartAvatar();
-        }, 10_000);
-        avatar.speak({ text: "Ciao! Dimmi pure la tua domanda." });  // <— TEST: deve animare bocca
-
-      });
-
-      avatar.on(StreamingEvents.STREAM_DISCONNECTED, (e) => {
-        console.warn("[DTI/Avatar] STREAM_DISCONNECTED", e);
-        setPh("Connessione interrotta. Riavvio…");
-        restartAvatar();
-      });
-
-      avatar.on(StreamingEvents.ERROR, (e) => {
-        const d = e?.detail || {};
-        const code = d.code || d.status || "";
-        const msg  = d.message || d.error || (typeof e === "string" ? e : "");
-        console.error("[DTI/Avatar] STREAM_ERROR", d);
-        setPh(`Errore streaming${code ? " "+code : ""}: ${msg || "unknown_error"}`);
-        restartAvatar();
-      });
-
-     // --- DIAGNOSI 400: tentativi in sequenza + errori espliciti ---
-async function tryStart(seq) {
-  for (const [i, opts] of seq.entries()) {
-    try {
-      console.log("[DTI/Avatar] TRY", i+1, opts);
-      setPh(`Avvio avatar… (tentativo ${i+1}/${seq.length})`);
-      await avatar.createStartAvatar(opts);
-      console.log("[DTI/Avatar] START OK con", opts);
-      return { ok: true, used: opts };
-    } catch (e) {
-      const d = e?.detail || e;
-      const code = d?.code || d?.status || "";
-      const msg  = d?.message || d?.error || (typeof e === "string" ? e : "");
-      console.warn("[DTI/Avatar] START FAIL", { opts, code, msg });
-      setPh(`Start fallito ${i+1}/${seq.length}${code ? " ["+code+"]" : ""}: ${msg || "bad_request"}`);
-      // continua con il prossimo tentativo
+    // =========================
+    // CHAT – UI helpers
+    // =========================
+    function appendMsg(role, text){
+      const row = document.createElement("div");
+      row.className = "msg " + (role === "user" ? "user" : "bot");
+      const b = document.createElement("div");
+      b.className = "bubble";
+      b.textContent = text;
+      row.appendChild(b);
+      chatEl.appendChild(row);
+      // autoscroll in fondo mantenendo la scrollbar
+      chatEl.scrollTop = chatEl.scrollHeight;
     }
-  }
-  return { ok: false };
-}
 
-// Sequenza di avvio (dal più semplice al più vincolato)
-const attempts = [
-  { quality: "low" },
-  { quality: "low", language: "en" },
-  { quality: "low", language: "it" },
+    function setStatus(t){ statusEl.textContent = t; }
 
-  // Se hai un ID avatar, proviamo entrambe le chiavi usate dalle varie versioni SDK
-  ...(HEYGEN_AVATAR_ID ? [
-    { quality: "low", avatarName: HEYGEN_AVATAR_ID },
-    { quality: "low", avatarId:   HEYGEN_AVATAR_ID }
-  ] : []),
+    // Invio domanda
+    async function ask(){
+      const msg = qEl.value.trim();
+      if(!msg) return;
+      qEl.value = "";
+      appendMsg("user", msg);
+      setStatus("Sto pensando…");
 
-  // Avatar + lingua (prima en, poi it)
-  ...(HEYGEN_AVATAR_ID ? [
-    { quality: "low", language: "en", avatarName: HEYGEN_AVATAR_ID },
-    { quality: "low", language: "en", avatarId:   HEYGEN_AVATAR_ID },
-    { quality: "low", language: "it", avatarName: HEYGEN_AVATAR_ID },
-    { quality: "low", language: "it", avatarId:   HEYGEN_AVATAR_ID }
-  ] : [])
-];
+      history.push({ role:"user", content: msg });
 
-// Esegui i tentativi
-const rStart = await tryStart(attempts);
-if (!rStart.ok) {
-  throw new Error("start_failed_all_variants"); // scatterà il catch e vedrai il messaggio nel placeholder
-}
-// --- fine diagnostica 400 ---
+      try{
+        const r = await fetch(`${API_BASE}/api/chat`, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ message: msg, history: history.slice(-6) })
+        });
+        const j = await r.json();
+        const answer = (j && j.answer ? j.answer : "Non trovo riferimenti nei materiali disponibili. Prova a chiedere in modo più specifico.");
+        appendMsg("bot", answer);
+        history.push({ role:"assistant", content: answer });
 
-      // attendo STREAM_READY
-    } catch (err) {
-      const d = err?.detail || err;
-      const code = d?.code || d?.status || "";
-      const msg  = d?.message || d?.error || (typeof err === "string" ? err : "");
-      console.error("[DTI/Avatar] init error", d);
-      statusEl.textContent = "Modalità chat testuale (avatar non configurato).";
-      setPh(`Errore avatar${code ? " "+code : ""}: ${msg || "init_failed"}`);
+        // Se/Quando lo stream sarà pronto, leggiamo la stessa risposta
+        speakIfReady(answer);
+        setStatus("Pronto.");
+      }catch(e){
+        appendMsg("bot","Si è verificato un errore. Riprova tra poco.");
+        setStatus("Errore rete.");
+      }
     }
-  }
 
-  async function restartAvatar() {
-    try { if (avatar?.stopAvatar) await avatar.stopAvatar(); if (avatar?.stop) await avatar.stop(); } catch {}
-    await initAvatarIfAvailable();
-  }
+    // Click e Invio da tastiera
+    askBtn.addEventListener("click", ask);
+    qEl.addEventListener("keydown", (ev)=>{
+      if(ev.key === "Enter"){ ev.preventDefault(); ask(); }
+    });
 
-  // ===== Chat testuale =====
-  function now() { return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
-  function appendMsg(role, text) {
-    const b = document.createElement("div");
-    b.className = `msg ${role}`;
-    b.textContent = text;
-    const t = document.createElement("span");
-    t.className = "time"; t.textContent = now();
-    b.appendChild(t);
-    chatEl.appendChild(b);
-    chatEl.scrollTop = chatEl.scrollHeight;
-  }
+    // =========================
+    // AVATAR – placeholder oggi, pronto domani
+    // =========================
+    let StreamingAvatar, StreamingEvents, avatar = null;
+    function speakIfReady(text){
+      if(!avatar) return;                 // finché HeyGen non abilita lo streaming
+      avatar.speak({ text }).catch(()=>{});
+    }
 
-  qEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askBtn.click(); }
-  });
+    async function loadSDK(){
+      // Quando HeyGen abilita lo streaming, riattiva questa riga UMD o l’import-map che usavi
+      // ({ default: StreamingAvatar, StreamingEvents } =
+      //   await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"));
+    }
 
-  askBtn.addEventListener("click", async () => {
-    const msg = qEl.value.trim();
-    if (!msg) return;
-    qEl.value = ""; askBtn.disabled = true; logEl.textContent = "Sto chiedendo al DTI…";
+    async function initAvatarIfAvailable(){
+      try{
+        // 1) Richiedi token (funziona già oggi)
+        // const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method:"POST" });
+        // const { token } = await r.json();
+        // if(!token) throw new Error("no_token");
 
-    history.push({ role: "user", content: msg }); appendMsg("user", msg);
-    try {
-      const r = await fetch(`${API_BASE}/api/chat`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, history: history.slice(-6) })
-      });
-      const { answer } = await r.json();
-      const safe = (answer || "").toString().trim() || "Non ho una risposta in questo momento.";
-      history.push({ role: "assistant", content: safe }); appendMsg("assistant", safe); logEl.textContent = "";
+        // 2) Carica SDK
+        // await loadSDK();
 
-      if (avatar) { try { await avatar.speak({ text: safe }); } catch (e) { console.warn("speak error", e); } }
-    } catch {
-      logEl.textContent = "Errore nel recupero della risposta. Riprova.";
-    } finally { askBtn.disabled = false; qEl.focus(); }
-  });
+        // 3) Istanzia e avvia (quando HeyGen abilita lo streaming)
+        // avatar = new StreamingAvatar({ token });
+        // avatar.on(StreamingEvents.STREAM_READY, (e)=>{
+        //   phEl.style.display = "none";
+        //   videoEl.srcObject = e.detail;
+        //   videoEl.muted = false; // l’utente può sbloccare con un click se serve
+        //   videoEl.play();
+        //   setStatus("Avatar pronto. Fai una domanda.");
+        // });
+        // avatar.on(StreamingEvents.ERROR, (e)=>{
+        //   console.warn("[DTI] STREAM_ERROR", e?.detail || e);
+        //   phEl.style.display = "flex";
+        //   setStatus("Voce non disponibile.");
+        // });
+        // await avatar.createStartAvatar({ quality:"low", language:"it", avatarName: "<ID_TUO_AVATAR>" });
 
-  // Avvio avatar (se token/SDK ok)
-  initAvatarIfAvailable();
-</script>
+        // OGGI: nessuno stream → mostra placeholder
+        phEl.style.display = "flex";
+      }catch(e){
+        console.warn("[DTI] init avatar error", e);
+        phEl.style.display = "flex";
+      }
+    }
+
+    // Avvio
+    initAvatarIfAvailable();
+  </script>
 </body>
 </html>

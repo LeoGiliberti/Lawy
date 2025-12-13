@@ -6,24 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      /* ←← Cambia SOLO questi tre valori per ridimensionare i riquadri */
+      /* ← Cambia qui le dimensioni complessive */
       --avatarW: 520px;   /* larghezza colonna sinistra (video)   */
       --chatW:   560px;   /* larghezza colonna destra (chat)      */
       --panelH:  520px;   /* altezza di entrambi i pannelli       */
 
-      --bg:#0b0c10;
-      --panel:#0f1115;
-      --text:#ffffff;
-      --muted:#9aa0a6;
-      --accent:#5ac8fa;
-      --bubble:#12151c;
-      --bubbleMe:#182331;
-      --radius:14px;
+      --bg:#0b0c10; --panel:#0f1115; --text:#ffffff; --muted:#9aa0a6;
+      --accent:#5ac8fa; --bubble:#12151c; --bubbleMe:#182331; --radius:14px;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
 
-    /* Centro tutto (orizzontale+verticale), con un po' di respiro ai bordi */
+    /* Centro tutta l'app al centro della pagina */
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
@@ -31,14 +25,14 @@
       min-height:100svh; padding:20px;
     }
 
-    /* Griglia a 2 colonne; larghezze pilotate dalle variabili */
+    /* Griglia 2 colonne con larghezze controllate da variabili */
     .app{
       width: calc(var(--avatarW) + var(--chatW) + 16px); /* 16px = gap */
       display:grid; gap:16px;
       grid-template-columns: var(--avatarW) var(--chatW);
     }
 
-    /* Pannelli */
+    /* Pannelli base */
     .panel{
       background:var(--panel);
       border:1px solid #151922;
@@ -49,7 +43,7 @@
       min-height:0;
     }
 
-    /* Avatar a sinistra: altezza fissa = --panelH */
+    /* Colonna sinistra: AVATAR */
     .avatar-wrap{
       height: var(--panelH);
       padding:0; overflow:hidden;
@@ -63,8 +57,7 @@
       color:var(--muted); background:#0a0c12; border-radius:var(--radius);
       border:1px dashed #1c2330; text-align:center; padding:18px;
     }
-
-    /* Overlay titolo/sottotitolo sul video in basso a sinistra */
+    /* Overlay titolo/sottotitolo sul video (in basso a sinistra) */
     .overlay{
       position:absolute; left:0; right:0; bottom:0; padding:18px;
       background:linear-gradient(180deg,rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 50%, rgba(0,0,0,.72) 100%);
@@ -75,7 +68,7 @@
     .title{ margin:0; font-weight:700; font-size:clamp(18px,3.2vw,28px); }
     .subtitle{ margin:6px 0 0; color:var(--muted); font-size:clamp(12px,2.4vw,16px); }
 
-    /* Colonna destra: chat (contenitore + box messaggi + input) */
+    /* Colonna destra: CHAT (stessa altezza della sinistra) */
     .chat{
       height: var(--panelH);
       display:flex; flex-direction:column; gap:12px;
@@ -86,7 +79,7 @@
       border-radius:var(--radius); padding:14px;
       border:1px solid #1a2130; scroll-behavior:smooth;
     }
-    /* Scrollbar interna al box messaggi */
+    /* Scrollbar dentro il box messaggi */
     .chat-box::-webkit-scrollbar{ width:10px; }
     .chat-box::-webkit-scrollbar-track{ background:#0e121a; border-radius:8px; }
     .chat-box::-webkit-scrollbar-thumb{ background:#2a3446; border-radius:8px; }
@@ -103,6 +96,11 @@
     .msg.user .bubble{ background:var(--bubbleMe); }
     .msg.bot  .bubble{ background:#121720; }
 
+    /* Riga stato IN BASSO nella chat */
+    .status-line{
+      margin-top:10px; color:var(--muted); font-size:13px;
+    }
+
     .row{ display:flex; gap:8px; }
     input[type="text"]{
       flex:1; padding:12px 14px; border-radius:12px; border:1px solid #1b2330;
@@ -112,9 +110,8 @@
       padding:12px 16px; border-radius:12px; border:0; cursor:pointer;
       font-weight:600; color:#001018; background:var(--accent);
     }
-    .status{ color:var(--muted); font-size:13px; margin-top:-4px; }
 
-    /* Responsivo: su schermi stretti torna a una colonna */
+    /* Mobile: una sola colonna fluida */
     @media (max-width: 980px){
       .app{ width:100%; max-width:900px; grid-template-columns:1fr; }
       .avatar-wrap, .chat{ height:auto; }
@@ -129,40 +126,39 @@
       <div id="avatarPh" class="avatar-ph">
         Avatar non disponibile (in attesa abilitazione streaming).<br/>La chat testuale è attiva.
       </div>
-
-      <!-- Titolo/Sottotitolo in trasparenza sul video -->
       <div class="overlay">
         <h1 class="title">Niccolò Musmeci</h1>
-        <p class="subtitle">Assistente alla privacy per il sistema sanitario nazionale</p>
+        <p class="subtitle">Assistente alla privacy per il sistema sanitario italiano</p>
       </div>
     </section>
 
     <!-- DESTRA: CHAT -->
     <section class="panel chat">
-      <div id="chat" class="chat-box" aria-live="polite" aria-label="Messaggi precedenti"></div>
+      <div id="chat" class="chat-box" aria-live="polite" aria-label="Messaggi precedenti">
+        <!-- messaggi qui -->
+        <div id="statusLine" class="status-line">Pronto.</div>
+      </div>
 
       <div class="row">
         <input id="q" type="text" placeholder="Scrivi qui…" autocomplete="off" />
         <button id="ask" type="button">Invia</button>
       </div>
-
-      <div id="status" class="status">Pronto.</div>
     </section>
   </div>
 
   <script type="module">
-    // =========================
-    // CONFIG / RIFERIMENTI DOM
-    // =========================
-    const API_BASE = ''; // percorsi relativi (Vercel)
+    // ============ CONFIG / DOM ============
+    const API_BASE = ''; // percorsi relativi in Vercel
     const $ = id => document.getElementById(id);
-    const chatEl = $("chat"), qEl = $("q"), askBtn = $("ask"), statusEl = $("status");
+    const chatEl = $("chat"), qEl = $("q"), askBtn = $("ask");
+    const statusLine = $("statusLine");
     const videoEl = $("avatarVideo"), phEl = $("avatarPh");
     const history = [];
 
-    // =========================
-    // CHAT – UI helpers
-    // =========================
+    // ============ CHAT – UI ============
+    function scrollToBottom(){ chatEl.scrollTop = chatEl.scrollHeight; }
+    function setStatus(t){ statusLine.textContent = t; scrollToBottom(); }
+
     function appendMsg(role, text){
       const row = document.createElement("div");
       row.className = "msg " + (role === "user" ? "user" : "bot");
@@ -170,10 +166,11 @@
       b.className = "bubble";
       b.textContent = text;
       row.appendChild(b);
-      chatEl.appendChild(row);
-      chatEl.scrollTop = chatEl.scrollHeight; // autoscroll
+      // Inserisco il messaggio SEMPRE PRIMA della status-line,
+      // così lo stato resta l'ultima riga in basso.
+      chatEl.insertBefore(row, statusLine);
+      scrollToBottom();
     }
-    function setStatus(t){ statusEl.textContent = t; }
 
     async function ask(){
       const msg = qEl.value.trim();
@@ -193,60 +190,42 @@
         const answer = (j && j.answer ? j.answer : "Non trovo riferimenti nei materiali disponibili. Prova a chiedere in modo più specifico.");
         appendMsg("bot", answer);
         history.push({ role:"assistant", content: answer });
-        speakIfReady(answer);     // leggerà la risposta quando lo stream sarà attivo
+        speakIfReady(answer);     // parlerà quando lo stream sarà disponibile
         setStatus("Pronto.");
       }catch(e){
         appendMsg("bot","Si è verificato un errore. Riprova tra poco.");
         setStatus("Errore rete.");
       }
     }
+
     askBtn.addEventListener("click", ask);
     qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
-    // =========================
-    // AVATAR – placeholder oggi, pronto domani
-    // =========================
+    // ============ AVATAR – placeholder oggi ============
     let StreamingAvatar, StreamingEvents, avatar = null;
     function speakIfReady(text){
-      if(!avatar) return; // finché lo streaming non è abilitato
+      if(!avatar) return;
       avatar.speak({ text }).catch(()=>{});
-    }
-
-    async function loadSDK(){
-      // Quando HeyGen abilita lo streaming, usa il tuo import ufficiale (UMD o import-map)
-      // ({ default: StreamingAvatar, StreamingEvents } =
-      //   await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"));
     }
 
     async function initAvatarIfAvailable(){
       try{
-        // 1) Richiedi token (quando pronto)
+        // Quando HeyGen abilita lo streaming, riattiva token + SDK + start
         // const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method:"POST" });
         // const { token } = await r.json();
-        // if(!token) throw new Error("no_token");
-
-        // 2) Carica SDK
-        // await loadSDK();
-
-        // 3) Istanzia e avvia (quando HeyGen abilita lo streaming)
+        // ({ default: StreamingAvatar, StreamingEvents } =
+        //   await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"));
         // avatar = new StreamingAvatar({ token });
         // avatar.on(StreamingEvents.STREAM_READY, (e)=>{
         //   phEl.style.display = "none";
-        //   videoEl.srcObject = e.detail;
-        //   videoEl.muted = false; videoEl.play();
-        //   setStatus("Avatar pronto. Fai una domanda.");
-        // });
-        // avatar.on(StreamingEvents.ERROR, (e)=>{
-        //   console.warn("[DTI] STREAM_ERROR", e?.detail || e);
-        //   phEl.style.display = "flex";
-        //   setStatus("Voce non disponibile.");
+        //   videoEl.srcObject = e.detail; videoEl.muted = false; videoEl.play();
+        //   setStatus("Avatar pronto. Puoi parlare con me.");
         // });
         // await avatar.createStartAvatar({ quality:"low", language:"it", avatarName:"<ID_TUO_AVATAR>" });
 
-        // OGGI: nessuno stream → mostra placeholder
+        // Oggi: nessuno stream → placeholder
         phEl.style.display = "flex";
       }catch(e){
-        console.warn("[DTI] init avatar error", e);
         phEl.style.display = "flex";
       }
     }

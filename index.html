@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
+      /* ←← Cambia SOLO questi tre valori per ridimensionare i riquadri */
+      --avatarW: 520px;   /* larghezza colonna sinistra (video)   */
+      --chatW:   560px;   /* larghezza colonna destra (chat)      */
+      --panelH:  520px;   /* altezza di entrambi i pannelli       */
+
       --bg:#0b0c10;
       --panel:#0f1115;
       --text:#ffffff;
@@ -14,39 +19,23 @@
       --bubble:#12151c;
       --bubbleMe:#182331;
       --radius:14px;
-       --avatarW: 520px;   /* larghezza colonna sinistra (video)   */
-  --chatW:   560px;   /* larghezza colonna destra (chat)      */
-  --panelH:  520px;   /* altezza dei due pannelli             */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
+
+    /* Centro tutto (orizzontale+verticale), con un po' di respiro ai bordi */
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
-      display:flex;
-  align-items:center;       /* centro verticale */
-  justify-content:center;   /* centro orizzontale */
-  min-height:100svh;        /* copre l’altezza viewport su mobile */
-  padding:20px;             /* respiro dai bordi */
+      display:flex; align-items:center; justify-content:center;
+      min-height:100svh; padding:20px;
     }
 
-    /* Layout 2 colonne */
+    /* Griglia a 2 colonne; larghezze pilotate dalle variabili */
     .app{
-       width: calc(var(--avatarW) + var(--chatW) + 16px); /* 16px = gap */
-  display:grid;
-  gap:16px;
-  grid-template-columns: var(--avatarW) var(--chatW);
-      .avatar-wrap{ height: var(--panelH); min-height: 0; }
-.chat       { height: var(--panelH); min-height: 0; display:flex; flex-direction:column; gap:12px; }
-      .chat-box{
-  flex:1;                   /* riempie l’altezza restante */
-  overflow-y:auto;
-    }
-    @media (max-width:980px){
-      .app{
-         width: 100%;
-    max-width: 900px;
-    grid-template-columns: 1fr;
+      width: calc(var(--avatarW) + var(--chatW) + 16px); /* 16px = gap */
+      display:grid; gap:16px;
+      grid-template-columns: var(--avatarW) var(--chatW);
     }
 
     /* Pannelli */
@@ -56,19 +45,26 @@
       border-radius:var(--radius);
       padding:14px;
       position:relative;
-      min-height:360px;
       box-shadow:0 6px 18px rgba(0,0,0,.24);
+      min-height:0;
     }
 
-    /* Avatar / Video */
-    .avatar-wrap, .chat{ height: auto; }
+    /* Avatar a sinistra: altezza fissa = --panelH */
+    .avatar-wrap{
+      height: var(--panelH);
+      padding:0; overflow:hidden;
     }
     .avatar-video{
       width:100%; height:100%; display:block; background:#000;
-      border-radius:var(--radius);
-      object-fit:cover;
+      border-radius:var(--radius); object-fit:cover;
     }
-    /* Overlay titolo/sottotitolo sul video */
+    .avatar-ph{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      color:var(--muted); background:#0a0c12; border-radius:var(--radius);
+      border:1px dashed #1c2330; text-align:center; padding:18px;
+    }
+
+    /* Overlay titolo/sottotitolo sul video in basso a sinistra */
     .overlay{
       position:absolute; left:0; right:0; bottom:0; padding:18px;
       background:linear-gradient(180deg,rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 50%, rgba(0,0,0,.72) 100%);
@@ -79,18 +75,18 @@
     .title{ margin:0; font-weight:700; font-size:clamp(18px,3.2vw,28px); }
     .subtitle{ margin:6px 0 0; color:var(--muted); font-size:clamp(12px,2.4vw,16px); }
 
-    /* Chat a destra: area messaggi + input */
+    /* Colonna destra: chat (contenitore + box messaggi + input) */
     .chat{
-      display:flex; flex-direction:column; gap:12px; min-height:420px;
+      height: var(--panelH);
+      display:flex; flex-direction:column; gap:12px;
     }
     .chat-box{
-      flex:1; min-height:280px; max-height:58vh;
+      flex:1; min-height:240px;
       overflow-y:auto; background:var(--bubble);
       border-radius:var(--radius); padding:14px;
-      border:1px solid #1a2130;
-      scroll-behavior:smooth;
+      border:1px solid #1a2130; scroll-behavior:smooth;
     }
-    /* Scrollbar visibile/custom */
+    /* Scrollbar interna al box messaggi */
     .chat-box::-webkit-scrollbar{ width:10px; }
     .chat-box::-webkit-scrollbar-track{ background:#0e121a; border-radius:8px; }
     .chat-box::-webkit-scrollbar-thumb{ background:#2a3446; border-radius:8px; }
@@ -107,11 +103,7 @@
     .msg.user .bubble{ background:var(--bubbleMe); }
     .msg.bot  .bubble{ background:#121720; }
 
-    .status{ color:var(--muted); font-size:13px; margin-top:6px; }
-
-    .row{
-      display:flex; gap:8px;
-    }
+    .row{ display:flex; gap:8px; }
     input[type="text"]{
       flex:1; padding:12px 14px; border-radius:12px; border:1px solid #1b2330;
       background:#0f1115; color:var(--text); outline:none;
@@ -120,30 +112,32 @@
       padding:12px 16px; border-radius:12px; border:0; cursor:pointer;
       font-weight:600; color:#001018; background:var(--accent);
     }
+    .status{ color:var(--muted); font-size:13px; margin-top:-4px; }
 
-    /* Placeholder avatar (quando non è pronto) */
-    .avatar-ph{
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      color:var(--muted); background:#0a0c12; border-radius:var(--radius);
-      border:1px dashed #1c2330; text-align:center; padding:18px;
+    /* Responsivo: su schermi stretti torna a una colonna */
+    @media (max-width: 980px){
+      .app{ width:100%; max-width:900px; grid-template-columns:1fr; }
+      .avatar-wrap, .chat{ height:auto; }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- Colonna sinistra: AVATAR -->
+    <!-- SINISTRA: AVATAR -->
     <section class="panel avatar-wrap">
       <video id="avatarVideo" class="avatar-video" autoplay playsinline muted></video>
-      <div id="avatarPh" class="avatar-ph">Avatar non disponibile (in attesa abilitazione streaming).<br/> La chat testuale è attiva.</div>
+      <div id="avatarPh" class="avatar-ph">
+        Avatar non disponibile (in attesa abilitazione streaming).<br/>La chat testuale è attiva.
+      </div>
 
-      <!-- Overlay Titolo/Sottotitolo -->
+      <!-- Titolo/Sottotitolo in trasparenza sul video -->
       <div class="overlay">
-        <h1 class="title">Niccolò Musmeci</h1>
-        <p class="subtitle">Assistente alla privacy per il sistema sanitario italiano</p>
+        <h1 class="title">Titolo</h1>
+        <p class="subtitle">Sottotitolo</p>
       </div>
     </section>
 
-    <!-- Colonna destra: CHAT -->
+    <!-- DESTRA: CHAT -->
     <section class="panel chat">
       <div id="chat" class="chat-box" aria-live="polite" aria-label="Messaggi precedenti"></div>
 
@@ -177,20 +171,16 @@
       b.textContent = text;
       row.appendChild(b);
       chatEl.appendChild(row);
-      // autoscroll in fondo mantenendo la scrollbar
-      chatEl.scrollTop = chatEl.scrollHeight;
+      chatEl.scrollTop = chatEl.scrollHeight; // autoscroll
     }
-
     function setStatus(t){ statusEl.textContent = t; }
 
-    // Invio domanda
     async function ask(){
       const msg = qEl.value.trim();
       if(!msg) return;
       qEl.value = "";
       appendMsg("user", msg);
       setStatus("Sto pensando…");
-
       history.push({ role:"user", content: msg });
 
       try{
@@ -203,40 +193,34 @@
         const answer = (j && j.answer ? j.answer : "Non trovo riferimenti nei materiali disponibili. Prova a chiedere in modo più specifico.");
         appendMsg("bot", answer);
         history.push({ role:"assistant", content: answer });
-
-        // Se/Quando lo stream sarà pronto, leggiamo la stessa risposta
-        speakIfReady(answer);
+        speakIfReady(answer);     // leggerà la risposta quando lo stream sarà attivo
         setStatus("Pronto.");
       }catch(e){
         appendMsg("bot","Si è verificato un errore. Riprova tra poco.");
         setStatus("Errore rete.");
       }
     }
-
-    // Click e Invio da tastiera
     askBtn.addEventListener("click", ask);
-    qEl.addEventListener("keydown", (ev)=>{
-      if(ev.key === "Enter"){ ev.preventDefault(); ask(); }
-    });
+    qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
     // =========================
     // AVATAR – placeholder oggi, pronto domani
     // =========================
     let StreamingAvatar, StreamingEvents, avatar = null;
     function speakIfReady(text){
-      if(!avatar) return;                 // finché HeyGen non abilita lo streaming
+      if(!avatar) return; // finché lo streaming non è abilitato
       avatar.speak({ text }).catch(()=>{});
     }
 
     async function loadSDK(){
-      // Quando HeyGen abilita lo streaming, riattiva questa riga UMD o l’import-map che usavi
+      // Quando HeyGen abilita lo streaming, usa il tuo import ufficiale (UMD o import-map)
       // ({ default: StreamingAvatar, StreamingEvents } =
       //   await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"));
     }
 
     async function initAvatarIfAvailable(){
       try{
-        // 1) Richiedi token (funziona già oggi)
+        // 1) Richiedi token (quando pronto)
         // const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method:"POST" });
         // const { token } = await r.json();
         // if(!token) throw new Error("no_token");
@@ -249,8 +233,7 @@
         // avatar.on(StreamingEvents.STREAM_READY, (e)=>{
         //   phEl.style.display = "none";
         //   videoEl.srcObject = e.detail;
-        //   videoEl.muted = false; // l’utente può sbloccare con un click se serve
-        //   videoEl.play();
+        //   videoEl.muted = false; videoEl.play();
         //   setStatus("Avatar pronto. Fai una domanda.");
         // });
         // avatar.on(StreamingEvents.ERROR, (e)=>{
@@ -258,7 +241,7 @@
         //   phEl.style.display = "flex";
         //   setStatus("Voce non disponibile.");
         // });
-        // await avatar.createStartAvatar({ quality:"low", language:"it", avatarName: "<ID_TUO_AVATAR>" });
+        // await avatar.createStartAvatar({ quality:"low", language:"it", avatarName:"<ID_TUO_AVATAR>" });
 
         // OGGI: nessuno stream → mostra placeholder
         phEl.style.display = "flex";
@@ -267,8 +250,6 @@
         phEl.style.display = "flex";
       }
     }
-
-    // Avvio
     initAvatarIfAvailable();
   </script>
 </body>

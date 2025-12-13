@@ -149,6 +149,11 @@
   <script type="module">
     // ============ CONFIG / DOM ============
     const API_BASE = ''; // percorsi relativi in Vercel
+    // === HEYGEN CONFIG (puoi compilarle ora) ===
+const HEYGEN_AVATAR_NAME = "cb58c4a7e64e4f849b621df9a2aecb0b"; // ← incolla qui il tuo ID
+const HEYGEN_VOICE_ID    = "";                                   // opzionale (es. voce italiana)
+const HEYGEN_LANGUAGE    = "it";                                  // "it" o "en"
+
     const $ = id => document.getElementById(id);
     const chatEl = $("chat"), qEl = $("q"), askBtn = $("ask");
     const statusLine = $("statusLine");

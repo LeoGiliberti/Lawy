@@ -14,22 +14,39 @@
       --bubble:#12151c;
       --bubbleMe:#182331;
       --radius:14px;
+       --avatarW: 520px;   /* larghezza colonna sinistra (video)   */
+  --chatW:   560px;   /* larghezza colonna destra (chat)      */
+  --panelH:  520px;   /* altezza dei due pannelli             */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+      display:flex;
+  align-items:center;       /* centro verticale */
+  justify-content:center;   /* centro orizzontale */
+  min-height:100svh;        /* copre l’altezza viewport su mobile */
+  padding:20px;             /* respiro dai bordi */
     }
 
     /* Layout 2 colonne */
     .app{
-      max-width:1200px; margin:0 auto; padding:20px;
-      display:grid; gap:16px;
-      grid-template-columns: 1fr 1.1fr;
+       width: calc(var(--avatarW) + var(--chatW) + 16px); /* 16px = gap */
+  display:grid;
+  gap:16px;
+  grid-template-columns: var(--avatarW) var(--chatW);
+      .avatar-wrap{ height: var(--panelH); min-height: 0; }
+.chat       { height: var(--panelH); min-height: 0; display:flex; flex-direction:column; gap:12px; }
+      .chat-box{
+  flex:1;                   /* riempie l’altezza restante */
+  overflow-y:auto;
     }
     @media (max-width:980px){
-      .app{ grid-template-columns:1fr; }
+      .app{
+         width: 100%;
+    max-width: 900px;
+    grid-template-columns: 1fr;
     }
 
     /* Pannelli */
@@ -44,8 +61,7 @@
     }
 
     /* Avatar / Video */
-    .avatar-wrap{
-      position:relative; overflow:hidden; padding:0; min-height:420px;
+    .avatar-wrap, .chat{ height: auto; }
     }
     .avatar-video{
       width:100%; height:100%; display:block; background:#000;
@@ -122,8 +138,8 @@
 
       <!-- Overlay Titolo/Sottotitolo -->
       <div class="overlay">
-        <h1 class="title">Titolo</h1>
-        <p class="subtitle">Sottotitolo</p>
+        <h1 class="title">Niccolò Musmeci</h1>
+        <p class="subtitle">Assistente alla privacy per il sistema sanitario italiano</p>
       </div>
     </section>
 

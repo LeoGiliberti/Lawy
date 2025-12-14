@@ -101,10 +101,10 @@
       margin-top:10px; color:var(--muted); font-size:13px;
     }
 
-    .row{ display:flex; gap:8px; }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; }
     input[type="text"]{
       flex:1; padding:12px 14px; border-radius:12px; border:1px solid #1b2330;
-      background:#0f1115; color:var(--text); outline:none;
+      background:#0f1115; color:var(--text); outline:none; min-width:200px;
     }
     button{
       padding:12px 16px; border-radius:12px; border:0; cursor:pointer;
@@ -117,15 +117,16 @@
       .avatar-wrap, .chat{ height:auto; }
     }
   </style>
-  <!-- INSERT: import map per HeyGen Streaming SDK -->
-<script type="importmap">
-{
-  "imports": {
-    "livekit-client": "https://esm.sh/livekit-client@2",
-    "protobufjs": "https://esm.sh/protobufjs@7"
+
+  <!-- Import map per le dipendenze ESM richieste dalla SDK HeyGen -->
+  <script type="importmap">
+  {
+    "imports": {
+      "livekit-client": "https://esm.sh/livekit-client@2",
+      "protobufjs": "https://esm.sh/protobufjs@7"
+    }
   }
-}
-</script>
+  </script>
 </head>
 <body>
   <div class="app">
@@ -149,24 +150,32 @@
       </div>
 
       <div class="row">
+        <!-- Pulsanti avatar -->
+        <button id="startAvatar" type="button">Avvia avatar</button>
+        <button id="stopAvatar"  type="button" style="background:#2f3b4f;color:#dfe7ef;">Stop</button>
+
+        <!-- Chat input -->
         <input id="q" type="text" placeholder="Scrivi qui…" autocomplete="off" />
         <button id="ask" type="button">Invia</button>
       </div>
     </section>
   </div>
 
-  
   <script type="module">
     // ============ CONFIG / DOM ============
     const API_BASE = ''; // percorsi relativi in Vercel
-    // === HEYGEN CONFIG (puoi compilarle ora) ===
-const HEYGEN_AVATAR_NAME = "cb58c4a7e64e4f849b621df9a2aecb0b"; // ← incolla qui il tuo ID                              
-const HEYGEN_LANGUAGE    = "it";                                  // "it" o "en"
+
+    // HEYGEN CONFIG — usa avatarName (ID del tuo avatar interattivo)
+    const HEYGEN_AVATAR_NAME = "cb58c4a7e64e4f849b621df9a2aecb0b"; // ← il tuo ID
+    const HEYGEN_LANGUAGE    = "it";   // prova "en" se serve
+    const HEYGEN_QUALITY     = "low";  // "low" per test
 
     const $ = id => document.getElementById(id);
     const chatEl = $("chat"), qEl = $("q"), askBtn = $("ask");
     const statusLine = $("statusLine");
     const videoEl = $("avatarVideo"), phEl = $("avatarPh");
+    const startBtn = $("startAvatar"), stopBtn = $("stopAvatar");
+
     const history = [];
 
     // ============ CHAT – UI ============
@@ -204,7 +213,10 @@ const HEYGEN_LANGUAGE    = "it";                                  // "it" o "en"
         const answer = (j && j.answer ? j.answer : "Non trovo riferimenti nei materiali disponibili. Prova a chiedere in modo più specifico.");
         appendMsg("bot", answer);
         history.push({ role:"assistant", content: answer });
-        speakIfReady(answer);     // parlerà quando lo stream sarà disponibile
+
+        // Se l’avatar è attivo, parla
+        if (window.avatarSpeak) window.avatarSpeak(answer);
+
         setStatus("Pronto.");
       }catch(e){
         appendMsg("bot","Si è verificato un errore. Riprova tra poco.");
@@ -215,35 +227,103 @@ const HEYGEN_LANGUAGE    = "it";                                  // "it" o "en"
     askBtn.addEventListener("click", ask);
     qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
-    // ============ AVATAR – placeholder oggi ============
+    // ============ AVATAR – avvio manuale + speak ============
     let StreamingAvatar, StreamingEvents, avatar = null;
-    function speakIfReady(text){
-      if(!avatar) return;
-      avatar.speak({ text }).catch(()=>{});
+
+    async function loadSDK() {
+      // SDK ESM (funziona grazie all'import map nel <head>)
+      const mod = await import("https://unpkg.com/@heygen/streaming-avatar@4/dist/index.js");
+      StreamingAvatar = mod.default;
+      ({ StreamingEvents } = mod);
     }
 
-    async function initAvatarIfAvailable(){
-      try{
-        // Quando HeyGen abilita lo streaming, riattiva token + SDK + start
-        // const r = await fetch(`${API_BASE}/api/get-heygen-token`, { method:"POST" });
-        // const { token } = await r.json();
-        // ({ default: StreamingAvatar, StreamingEvents } =
-        //   await import("https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"));
-        // avatar = new StreamingAvatar({ token });
-        // avatar.on(StreamingEvents.STREAM_READY, (e)=>{
-        //   phEl.style.display = "none";
-        //   videoEl.srcObject = e.detail; videoEl.muted = false; videoEl.play();
-        //   setStatus("Avatar pronto. Puoi parlare con me.");
-        // });
-        // await avatar.createStartAvatar({ quality:"low", language:"it", avatarName:"<ID_TUO_AVATAR>" });
+    async function getToken() {
+      const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: "{}"
+      });
+      const j = await r.json();
+      if (!r.ok || !j?.token) throw new Error("token_error");
+      return j.token;
+    }
 
-        // Oggi: nessuno stream → placeholder
-        phEl.style.display = "flex";
+    async function startAvatarOnce() {
+      try{
+        setStatus("Richiesta token…");
+        const token = await getToken();
+
+        setStatus("Carico SDK…");
+        await loadSDK();
+
+        setStatus("Creo sessione…");
+        avatar = new StreamingAvatar({ token });
+
+        // Eventi dello stream
+        avatar.on(StreamingEvents.STREAM_READY, (ev) => {
+          phEl.style.display = "none";
+          videoEl.srcObject = ev.detail;
+          videoEl.play();
+          // primo click sblocca audio nel browser
+          videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once:true });
+          setStatus("Avatar pronto.");
+        });
+        avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
+          setStatus("Connessione chiusa.");
+          showPlaceholder();
+        });
+        avatar.on(StreamingEvents.ERROR, (e) => {
+          console.error("STREAM_ERROR", e);
+          setStatus("Errore di streaming.");
+          showPlaceholder();
+        });
+
+        // Importante: usa avatarName (non avatarId)
+        const startReq = {
+          quality: HEYGEN_QUALITY,
+          avatarName: HEYGEN_AVATAR_NAME,
+          language: HEYGEN_LANGUAGE
+          // opzionale: voice: { voiceId: "..." }
+        };
+        console.log("createStartAvatar ->", startReq);
+        await avatar.createStartAvatar(startReq);
       }catch(e){
-        phEl.style.display = "flex";
+        console.error("Start failed:", e);
+        setStatus("Impossibile avviare l’avatar (vedi console).");
+        showPlaceholder();
       }
     }
-    initAvatarIfAvailable();
+
+    async function stopAvatar() {
+      try{
+        if (avatar?.stopAvatar) await avatar.stopAvatar();
+        if (avatar?.stop)       await avatar.stop();
+      }catch(_){}
+      avatar = null;
+      showPlaceholder();
+      setStatus("Avatar fermato.");
+    }
+
+    function showPlaceholder(){
+      try{
+        videoEl.srcObject = null;
+        phEl.style.display = "flex";
+      }catch(_){}
+    }
+
+    // Espone una funzione per far parlare l’avatar
+    window.avatarSpeak = async (text) => {
+      if (!avatar || !text) return;
+      try { await avatar.speak({ text }); }
+      catch (e) { console.error("speak error:", e); }
+    };
+
+    // Bottoni manuali: un solo start = un solo addebito
+    startBtn?.addEventListener("click", startAvatarOnce);
+    stopBtn?.addEventListener("click",  stopAvatar);
+
+    // Nessun auto-start all’onload (evita consumi involontari)
+    showPlaceholder();
   </script>
 </body>
 </html>

@@ -231,11 +231,11 @@
     let StreamingAvatar, StreamingEvents, avatar = null;
 
     async function loadSDK() {
-      // SDK ESM (funziona grazie all'import map nel <head>)
-      const mod = await import("https://unpkg.com/@heygen/streaming-avatar@4/dist/index.js");
-      StreamingAvatar = mod.default;
-      ({ StreamingEvents } = mod);
-    }
+  // SDK bundle: include dipendenze, niente import map, CORS ok
+  const mod = await import("https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/dist/index.esm.js");
+  StreamingAvatar = mod.default;
+  ({ StreamingEvents } = mod);
+}
 
     async function getToken() {
       const r = await fetch(`${API_BASE}/api/get-heygen-token`, {

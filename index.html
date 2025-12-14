@@ -219,38 +219,21 @@
     askBtn.addEventListener("click", ask);
     qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
-    // ============ AVATAR – avvio manuale + speak ============
-    let StreamingAvatar, StreamingEvents, avatar = null;
+   // --- HEYGEN LOADER (unico) ---
+// Carica la SDK UMD con fallback su più CDN, ed evita doppi caricamenti
+let __heygenSDKLoaded = false;
 
-     async function loadSDK() {
-    // La UMD espone la classe sul window.
-    const SA =
-      window.StreamingAvatar ||
-      (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default));
-
-    const SE =
-      window.StreamingEvents ||
-      (window.HeyGen && window.HeyGen.StreamingEvents) ||
-      (SA && SA.StreamingEvents);
-
-    if (!SA) throw new Error("sdk_not_loaded_umd");
-    window.StreamingAvatar = SA;
-    window.StreamingEvents = SE || {};
+async function loadHeygenSDK() {
+  if (__heygenSDKLoaded && (window.StreamingAvatar || (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default)))) {
     return true;
   }
-    
-    // Caricatore UMD robusto con fallback multipli
-async function loadSDK() {
+
   const urls = [
-    // UMD ufficiale
     "https://unpkg.com/@heygen/streaming-avatar@4/dist/index.umd.js",
-    // fallback jsDelivr
     "https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/dist/index.umd.js",
-    // eventuale path senza @version
     "https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"
   ];
 
-  // helper per caricare uno <script> e attendere onload/onerror
   function inject(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
@@ -269,7 +252,6 @@ async function loadSDK() {
       console.log("[DTI/Avatar] try load UMD:", u);
       await inject(u);
 
-      // Possibili global esposti dalla UMD
       const SA =
         window.StreamingAvatar ||
         (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default));
@@ -281,19 +263,21 @@ async function loadSDK() {
       if (SA) {
         window.StreamingAvatar = SA;
         window.StreamingEvents = SE || {};
+        __heygenSDKLoaded = true;
         console.log("[DTI/Avatar] UMD loaded from:", u);
         return true;
       }
-
-      console.warn("[DTI/Avatar] UMD loaded but no global found on:", u);
       lastErr = new Error("sdk_global_missing");
+      console.warn("[DTI/Avatar] UMD loaded but no global found on:", u);
     } catch (e) {
-      console.warn("[DTI/Avatar] UMD load failed:", e.message);
       lastErr = e;
+      console.warn("[DTI/Avatar] UMD load failed:", e.message);
     }
   }
   throw lastErr || new Error("sdk_not_loaded_umd");
 }
+// --- /HEYGEN LOADER ---
+
 
     async function startAvatarOnce() {
       try{
@@ -301,7 +285,7 @@ async function loadSDK() {
         const token = await getToken();
 
         setStatus("Carico SDK…");
-        await loadSDK();
+        await loadHeygenSDK();
 
         setStatus("Creo sessione…");
         // PRIMA: avatar = new StreamingAvatar({ token });

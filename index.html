@@ -117,16 +117,6 @@
       .avatar-wrap, .chat{ height:auto; }
     }
   </style>
-
-  <!-- Import map per le dipendenze ESM richieste dalla SDK HeyGen -->
-  <script type="importmap">
-  {
-    "imports": {
-      "livekit-client": "https://esm.sh/livekit-client@2",
-      "protobufjs": "https://esm.sh/protobufjs@7"
-    }
-  }
-  </script>
 </head>
 <body>
   <div class="app">
@@ -231,8 +221,8 @@
     let StreamingAvatar, StreamingEvents, avatar = null;
 
     async function loadSDK() {
-  // SDK bundle: include dipendenze, niente import map, CORS ok
-  const mod = await import("https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/dist/index.esm.js");
+  // Bundle ESM con CORS corretto: niente import map, niente dipendenze da risolvere
+  const mod = await import("https://esm.sh/@heygen/streaming-avatar@4?bundle&target=es2020");
   StreamingAvatar = mod.default;
   ({ StreamingEvents } = mod);
 }

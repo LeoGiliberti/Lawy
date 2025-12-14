@@ -276,11 +276,8 @@ async function loadHeygenSDK() {
   }
   throw lastErr || new Error("sdk_not_loaded_umd");
 }
-// --- /HEYGEN LOADER ---
 
 
-    // --- TOKEN HEYGEN (aggiungi questa funzione) ---
-const API_BASE = ''; // lascia vuoto per percorsi relativi su Vercel
 
 async function getToken() {
   const r = await fetch(`${API_BASE}/api/get-heygen-token`, {

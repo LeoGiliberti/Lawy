@@ -117,6 +117,8 @@
       .avatar-wrap, .chat{ height:auto; }
     }
   </style>
+  <!-- SDK HeyGen UMD: niente import map, niente dynamic import -->
+<script src="https://unpkg.com/@heygen/streaming-avatar@4/dist/index.umd.js"></script>
 </head>
 <body>
   <div class="app">
@@ -220,17 +222,23 @@
     // ============ AVATAR – avvio manuale + speak ============
     let StreamingAvatar, StreamingEvents, avatar = null;
 
-    async function loadSDK() {
-  // Importa la SDK dal TUO dominio (niente CORS)
-  const mod = await import(`${API_BASE || ''}/api/heygen-sdk`);
-  console.log("[DTI/Avatar] SDK loaded from local proxy");
-  // La SDK esporta default (classe) + named (eventi)
-  // NB: in alcune versioni è default+named, in altre solo default
-  const def = mod.default || mod.StreamingAvatar || mod;
-  window.StreamingAvatar = def;
-  window.StreamingEvents = mod.StreamingEvents || mod.events || {};
-}
+     async function loadSDK() {
+    // La UMD espone la classe sul window.
+    const SA =
+      window.StreamingAvatar ||
+      (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default));
 
+    const SE =
+      window.StreamingEvents ||
+      (window.HeyGen && window.HeyGen.StreamingEvents) ||
+      (SA && SA.StreamingEvents);
+
+    if (!SA) throw new Error("sdk_not_loaded_umd");
+    window.StreamingAvatar = SA;
+    window.StreamingEvents = SE || {};
+    return true;
+  }
+    
     async function getToken() {
       const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
         method:"POST",
@@ -273,12 +281,10 @@
         });
 
         // Importante: usa avatarName (non avatarId)
-        const startReq = {
-          quality: HEYGEN_QUALITY,
-          avatarName: HEYGEN_AVATAR_NAME,
-          language: HEYGEN_LANGUAGE
-          // opzionale: voice: { voiceId: "..." }
-        };
+       const startReq = {
+        quality: "low",
+        avatarName: "cb58c4a7e64e4f849b621df9a2aecb0b" // tuo ID avatar
+      };
         console.log("createStartAvatar ->", startReq);
         await avatar.createStartAvatar(startReq);
       }catch(e){

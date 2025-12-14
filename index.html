@@ -239,16 +239,61 @@
     return true;
   }
     
-    async function getToken() {
-      const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: "{}"
-      });
-      const j = await r.json();
-      if (!r.ok || !j?.token) throw new Error("token_error");
-      return j.token;
+    // Caricatore UMD robusto con fallback multipli
+async function loadSDK() {
+  const urls = [
+    // UMD ufficiale
+    "https://unpkg.com/@heygen/streaming-avatar@4/dist/index.umd.js",
+    // fallback jsDelivr
+    "https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/dist/index.umd.js",
+    // eventuale path senza @version
+    "https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"
+  ];
+
+  // helper per caricare uno <script> e attendere onload/onerror
+  function inject(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.crossOrigin = "anonymous";
+      s.onload = () => resolve(src);
+      s.onerror = () => reject(new Error("script_load_failed: " + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  let lastErr = null;
+  for (const u of urls) {
+    try {
+      console.log("[DTI/Avatar] try load UMD:", u);
+      await inject(u);
+
+      // Possibili global esposti dalla UMD
+      const SA =
+        window.StreamingAvatar ||
+        (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default));
+      const SE =
+        window.StreamingEvents ||
+        (window.HeyGen && window.HeyGen.StreamingEvents) ||
+        (SA && SA.StreamingEvents);
+
+      if (SA) {
+        window.StreamingAvatar = SA;
+        window.StreamingEvents = SE || {};
+        console.log("[DTI/Avatar] UMD loaded from:", u);
+        return true;
+      }
+
+      console.warn("[DTI/Avatar] UMD loaded but no global found on:", u);
+      lastErr = new Error("sdk_global_missing");
+    } catch (e) {
+      console.warn("[DTI/Avatar] UMD load failed:", e.message);
+      lastErr = e;
     }
+  }
+  throw lastErr || new Error("sdk_not_loaded_umd");
+}
 
     async function startAvatarOnce() {
       try{
@@ -259,7 +304,9 @@
         await loadSDK();
 
         setStatus("Creo sessione…");
-        avatar = new window.StreamingAvatar({ token });
+        // PRIMA: avatar = new StreamingAvatar({ token });
+avatar = new window.StreamingAvatar({ token });
+
 
         // Eventi dello stream
         avatar.on(StreamingEvents.STREAM_READY, (ev) => {

@@ -279,6 +279,24 @@ async function loadHeygenSDK() {
 // --- /HEYGEN LOADER ---
 
 
+    // --- TOKEN HEYGEN (aggiungi questa funzione) ---
+const API_BASE = ''; // lascia vuoto per percorsi relativi su Vercel
+
+async function getToken() {
+  const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  });
+  const j = await r.json();
+  if (!r.ok || !j?.token) {
+    console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);
+    throw new Error("token_error");
+  }
+  return j.token;
+}
+// --- fine token ---
+
     async function startAvatarOnce() {
       try{
         setStatus("Richiesta token…");

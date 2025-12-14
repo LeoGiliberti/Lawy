@@ -221,8 +221,8 @@
     let StreamingAvatar, StreamingEvents, avatar = null;
 
     async function loadSDK() {
-  // Bundle ESM con CORS corretto: niente import map, niente dipendenze da risolvere
-  const mod = await import("https://esm.sh/@heygen/streaming-avatar@4?bundle&target=es2020");
+  // Alternativa via jsDelivr che trasforma in ESM
+  const mod = await import("https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/+esm");
   StreamingAvatar = mod.default;
   ({ StreamingEvents } = mod);
 }

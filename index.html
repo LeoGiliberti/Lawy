@@ -221,10 +221,26 @@
     let StreamingAvatar, StreamingEvents, avatar = null;
 
     async function loadSDK() {
-  // Alternativa via jsDelivr che trasforma in ESM
-  const mod = await import("https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/+esm");
-  StreamingAvatar = mod.default;
-  ({ StreamingEvents } = mod);
+  // Prova più CDN, si ferma al primo che risponde con CORS ok
+  const urls = [
+    "https://esm.sh/@heygen/streaming-avatar@4?bundle&target=es2020",
+    "https://esm.run/@heygen/streaming-avatar@4",
+    "https://ga.jspm.io/npm:@heygen/streaming-avatar@4/dist/index.js"
+  ];
+  let lastErr = null;
+  for (const u of urls) {
+    try {
+      const mod = await import(u);
+      console.log("[DTI/Avatar] SDK loaded from:", u);
+      StreamingAvatar = mod.default;
+      ({ StreamingEvents } = mod);
+      return;
+    } catch (e) {
+      console.warn("[DTI/Avatar] SDK load failed:", u, e);
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("sdk_load_failed_all_cdn");
 }
 
     async function getToken() {

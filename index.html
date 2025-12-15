@@ -6,33 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      /* ← Cambia qui le dimensioni complessive */
-      --avatarW: 520px;   /* larghezza colonna sinistra (video)   */
-      --chatW:   560px;   /* larghezza colonna destra (chat)      */
-      --panelH:  520px;   /* altezza di entrambi i pannelli       */
-
+      --avatarW: 520px;
+      --chatW:   560px;
+      --panelH:  520px;
       --bg:#0b0c10; --panel:#0f1115; --text:#ffffff; --muted:#9aa0a6;
       --accent:#5ac8fa; --bubble:#12151c; --bubbleMe:#182331; --radius:14px;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-
-    /* Centro tutta l'app al centro della pagina */
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
       display:flex; align-items:center; justify-content:center;
       min-height:100svh; padding:20px;
     }
-
-    /* Griglia 2 colonne con larghezze controllate da variabili */
     .app{
-      width: calc(var(--avatarW) + var(--chatW) + 16px); /* 16px = gap */
+      width: calc(var(--avatarW) + var(--chatW) + 16px);
       display:grid; gap:16px;
       grid-template-columns: var(--avatarW) var(--chatW);
     }
-
-    /* Pannelli base */
     .panel{
       background:var(--panel);
       border:1px solid #151922;
@@ -42,12 +34,7 @@
       box-shadow:0 6px 18px rgba(0,0,0,.24);
       min-height:0;
     }
-
-    /* Colonna sinistra: AVATAR */
-    .avatar-wrap{
-      height: var(--panelH);
-      padding:0; overflow:hidden;
-    }
+    .avatar-wrap{ height: var(--panelH); padding:0; overflow:hidden; }
     .avatar-video{
       width:100%; height:100%; display:block; background:#000;
       border-radius:var(--radius); object-fit:cover;
@@ -57,7 +44,6 @@
       color:var(--muted); background:#0a0c12; border-radius:var(--radius);
       border:1px dashed #1c2330; text-align:center; padding:18px;
     }
-    /* Overlay titolo/sottotitolo sul video (in basso a sinistra) */
     .overlay{
       position:absolute; left:0; right:0; bottom:0; padding:18px;
       background:linear-gradient(180deg,rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 50%, rgba(0,0,0,.72) 100%);
@@ -67,24 +53,17 @@
     }
     .title{ margin:0; font-weight:700; font-size:clamp(18px,3.2vw,28px); }
     .subtitle{ margin:6px 0 0; color:var(--muted); font-size:clamp(12px,2.4vw,16px); }
-
-    /* Colonna destra: CHAT (stessa altezza della sinistra) */
-    .chat{
-      height: var(--panelH);
-      display:flex; flex-direction:column; gap:12px;
-    }
+    .chat{ height: var(--panelH); display:flex; flex-direction:column; gap:12px; }
     .chat-box{
       flex:1; min-height:240px;
       overflow-y:auto; background:var(--bubble);
       border-radius:var(--radius); padding:14px;
       border:1px solid #1a2130; scroll-behavior:smooth;
     }
-    /* Scrollbar dentro il box messaggi */
     .chat-box::-webkit-scrollbar{ width:10px; }
     .chat-box::-webkit-scrollbar-track{ background:#0e121a; border-radius:8px; }
     .chat-box::-webkit-scrollbar-thumb{ background:#2a3446; border-radius:8px; }
     .chat-box{ scrollbar-width:thin; scrollbar-color:#2a3446 #0e121a; }
-
     .msg{ display:flex; margin:8px 0; }
     .msg .bubble{
       padding:10px 12px; border-radius:12px; line-height:1.35; max-width:88%;
@@ -95,12 +74,7 @@
     .msg.user{ justify-content:flex-end; }
     .msg.user .bubble{ background:var(--bubbleMe); }
     .msg.bot  .bubble{ background:#121720; }
-
-    /* Riga stato IN BASSO nella chat */
-    .status-line{
-      margin-top:10px; color:var(--muted); font-size:13px;
-    }
-
+    .status-line{ margin-top:10px; color:var(--muted); font-size:13px; }
     .row{ display:flex; gap:8px; flex-wrap:wrap; }
     input[type="text"]{
       flex:1; padding:12px 14px; border-radius:12px; border:1px solid #1b2330;
@@ -110,15 +84,14 @@
       padding:12px 16px; border-radius:12px; border:0; cursor:pointer;
       font-weight:600; color:#001018; background:var(--accent);
     }
-
-    /* Mobile: una sola colonna fluida */
     @media (max-width: 980px){
       .app{ width:100%; max-width:900px; grid-template-columns:1fr; }
       .avatar-wrap, .chat{ height:auto; }
     }
   </style>
-  <!-- SDK HeyGen UMD: niente import map, niente dynamic import -->
-<script src="https://unpkg.com/@heygen/streaming-avatar@4/dist/index.umd.js"></script>
+
+  <!-- Carico la SDK UMD dal TUO dominio (proxy) -->
+  <script src="/api/heygen-sdk"></script>
 </head>
 <body>
   <div class="app">
@@ -137,16 +110,11 @@
     <!-- DESTRA: CHAT -->
     <section class="panel chat">
       <div id="chat" class="chat-box" aria-live="polite" aria-label="Messaggi precedenti">
-        <!-- messaggi qui -->
         <div id="statusLine" class="status-line">Pronto.</div>
       </div>
-
       <div class="row">
-        <!-- Pulsanti avatar -->
         <button id="startAvatar" type="button">Avvia avatar</button>
         <button id="stopAvatar"  type="button" style="background:#2f3b4f;color:#dfe7ef;">Stop</button>
-
-        <!-- Chat input -->
         <input id="q" type="text" placeholder="Scrivi qui…" autocomplete="off" />
         <button id="ask" type="button">Invia</button>
       </div>
@@ -154,26 +122,24 @@
   </div>
 
   <script type="module">
-    // ============ CONFIG / DOM ============
-    const API_BASE = ''; // percorsi relativi in Vercel
-
-    // HEYGEN CONFIG — usa avatarName (ID del tuo avatar interattivo)
-    const HEYGEN_AVATAR_NAME = "cb58c4a7e64e4f849b621df9a2aecb0b"; // ← il tuo ID
-    const HEYGEN_LANGUAGE    = "it";   // prova "en" se serve
-    const HEYGEN_QUALITY     = "low";  // "low" per test
+    // ======= CONFIG =======
+    const API_BASE = ''; // percorsi relativi su Vercel
+    const HEYGEN_AVATAR_ID = "c1fe9e29-d1f4-4f4b-a6e0-f5438b4288ee"; // <-- il TUO nuovo GUID
+    // opzionale dopo primo start OK:
+    // const HEYGEN_LANGUAGE  = "it";
+    // const HEYGEN_VOICE_ID  = "<voice-id>";
 
     const $ = id => document.getElementById(id);
     const chatEl = $("chat"), qEl = $("q"), askBtn = $("ask");
     const statusLine = $("statusLine");
     const videoEl = $("avatarVideo"), phEl = $("avatarPh");
     const startBtn = $("startAvatar"), stopBtn = $("stopAvatar");
-
     const history = [];
+    let avatar = null;
 
-    // ============ CHAT – UI ============
+    // ======= CHAT UI =======
     function scrollToBottom(){ chatEl.scrollTop = chatEl.scrollHeight; }
     function setStatus(t){ statusLine.textContent = t; scrollToBottom(); }
-
     function appendMsg(role, text){
       const row = document.createElement("div");
       row.className = "msg " + (role === "user" ? "user" : "bot");
@@ -181,8 +147,6 @@
       b.className = "bubble";
       b.textContent = text;
       row.appendChild(b);
-      // Inserisco il messaggio SEMPRE PRIMA della status-line,
-      // così lo stato resta l'ultima riga in basso.
       chatEl.insertBefore(row, statusLine);
       scrollToBottom();
     }
@@ -202,137 +166,73 @@
           body: JSON.stringify({ message: msg, history: history.slice(-6) })
         });
         const j = await r.json();
-        const answer = (j && j.answer ? j.answer : "Non trovo riferimenti nei materiali disponibili. Prova a chiedere in modo più specifico.");
+        const answer = j?.answer || "Non trovo riferimenti nei materiali disponibili. Prova a chiedere in modo più specifico.";
         appendMsg("bot", answer);
         history.push({ role:"assistant", content: answer });
 
         // Se l’avatar è attivo, parla
         if (window.avatarSpeak) window.avatarSpeak(answer);
-
         setStatus("Pronto.");
       }catch(e){
         appendMsg("bot","Si è verificato un errore. Riprova tra poco.");
         setStatus("Errore rete.");
       }
     }
-
     askBtn.addEventListener("click", ask);
     qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
-   // --- HEYGEN LOADER (unico) ---
-// Carica la SDK UMD con fallback su più CDN, ed evita doppi caricamenti
-let __heygenSDKLoaded = false;
-
-async function loadHeygenSDK() {
-  if (__heygenSDKLoaded && (window.StreamingAvatar || (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default)))) {
-    return true;
-  }
-
-  const urls = [
-    "https://unpkg.com/@heygen/streaming-avatar@4/dist/index.umd.js",
-    "https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@4/dist/index.umd.js",
-    "https://unpkg.com/@heygen/streaming-avatar/dist/index.umd.js"
-  ];
-
-  function inject(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.async = true;
-      s.crossOrigin = "anonymous";
-      s.onload = () => resolve(src);
-      s.onerror = () => reject(new Error("script_load_failed: " + src));
-      document.head.appendChild(s);
-    });
-  }
-
-  let lastErr = null;
-  for (const u of urls) {
-    try {
-      console.log("[DTI/Avatar] try load UMD:", u);
-      await inject(u);
-
-      const SA =
-        window.StreamingAvatar ||
-        (window.HeyGen && (window.HeyGen.StreamingAvatar || window.HeyGen.default));
-      const SE =
-        window.StreamingEvents ||
-        (window.HeyGen && window.HeyGen.StreamingEvents) ||
-        (SA && SA.StreamingEvents);
-
-      if (SA) {
-        window.StreamingAvatar = SA;
-        window.StreamingEvents = SE || {};
-        __heygenSDKLoaded = true;
-        console.log("[DTI/Avatar] UMD loaded from:", u);
-        return true;
+    // ======= TOKEN =======
+    async function getToken() {
+      const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}"
+      });
+      const j = await r.json();
+      if (!r.ok || !j?.token) {
+        console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);
+        throw new Error("token_error");
       }
-      lastErr = new Error("sdk_global_missing");
-      console.warn("[DTI/Avatar] UMD loaded but no global found on:", u);
-    } catch (e) {
-      lastErr = e;
-      console.warn("[DTI/Avatar] UMD load failed:", e.message);
+      return j.token;
     }
-  }
-  throw lastErr || new Error("sdk_not_loaded_umd");
-}
 
-
-
-async function getToken() {
-  const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}"
-  });
-  const j = await r.json();
-  if (!r.ok || !j?.token) {
-    console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);
-    throw new Error("token_error");
-  }
-  return j.token;
-}
-// --- fine token ---
-
+    // ======= AVATAR START/STOP (LiveAvatar + fallback Interactive) =======
     async function startAvatarOnce() {
       try{
         setStatus("Richiesta token…");
         const token = await getToken();
 
-        setStatus("Carico SDK…");
-        await loadHeygenSDK();
+        // la SDK UMD è caricata in <head> da /api/heygen-sdk
+        if (!window.StreamingAvatar) throw new Error("sdk_not_loaded_umd");
 
         setStatus("Creo sessione…");
-        // PRIMA: avatar = new StreamingAvatar({ token });
-avatar = new window.StreamingAvatar({ token });
+        const a = new window.StreamingAvatar({ token });
 
-
-        // Eventi dello stream
-        avatar.on(StreamingEvents.STREAM_READY, (ev) => {
+        a.on(window.StreamingEvents?.STREAM_READY || "STREAM_READY", (ev) => {
           phEl.style.display = "none";
           videoEl.srcObject = ev.detail;
           videoEl.play();
-          // primo click sblocca audio nel browser
           videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once:true });
           setStatus("Avatar pronto.");
         });
-        avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
-          setStatus("Connessione chiusa.");
-          showPlaceholder();
+        a.on(window.StreamingEvents?.STREAM_DISCONNECTED || "STREAM_DISCONNECTED", () => {
+          setStatus("Connessione chiusa."); showPlaceholder();
         });
-        avatar.on(StreamingEvents.ERROR, (e) => {
-          console.error("STREAM_ERROR", e);
-          setStatus("Errore di streaming.");
-          showPlaceholder();
+        a.on(window.StreamingEvents?.ERROR || "ERROR", (e) => {
+          console.error("STREAM_ERROR", e); setStatus("Errore di streaming."); showPlaceholder();
         });
 
-        // Importante: usa avatarName (non avatarId)
-       const startReq = {
-        quality: "low",
-        avatarName: "cb58c4a7e64e4f849b621df9a2aecb0b" // tuo ID avatar
-      };
-        console.log("createStartAvatar ->", startReq);
-        await avatar.createStartAvatar(startReq);
+        const startOpts = { quality: "low", avatarId: HEYGEN_AVATAR_ID };
+        console.log("[LiveAvatar] start ->", startOpts);
+
+        if (typeof a.startSession === "function") {
+          await a.startSession(startOpts);         // LiveAvatar
+        } else if (typeof a.createStartAvatar === "function") {
+          await a.createStartAvatar(startOpts);    // Interactive fallback
+        } else {
+          throw new Error("no_start_method_found");
+        }
+        avatar = a;
       }catch(e){
         console.error("Start failed:", e);
         setStatus("Impossibile avviare l’avatar (vedi console).");
@@ -342,8 +242,9 @@ avatar = new window.StreamingAvatar({ token });
 
     async function stopAvatar() {
       try{
-        if (avatar?.stopAvatar) await avatar.stopAvatar();
-        if (avatar?.stop)       await avatar.stop();
+        if (avatar?.stopSession) await avatar.stopSession(); // LiveAvatar
+        if (avatar?.stopAvatar)  await avatar.stopAvatar();  // Interactive
+        if (avatar?.stop)        await avatar.stop();
       }catch(_){}
       avatar = null;
       showPlaceholder();
@@ -351,24 +252,23 @@ avatar = new window.StreamingAvatar({ token });
     }
 
     function showPlaceholder(){
-      try{
-        videoEl.srcObject = null;
-        phEl.style.display = "flex";
-      }catch(_){}
+      try{ videoEl.srcObject = null; phEl.style.display = "flex"; }catch(_){}
     }
 
-    // Espone una funzione per far parlare l’avatar
+    // Espone speak (LiveAvatar -> speak_text, fallback Interactive -> speak)
     window.avatarSpeak = async (text) => {
       if (!avatar || !text) return;
-      try { await avatar.speak({ text }); }
-      catch (e) { console.error("speak error:", e); }
+      try {
+        if (typeof avatar.speak_text === "function") {
+          await avatar.speak_text({ text, language: "it" });   // LiveAvatar
+        } else if (typeof avatar.speak === "function") {
+          await avatar.speak({ text });                         // Interactive
+        }
+      } catch (e) { console.error("speak error:", e); }
     };
 
-    // Bottoni manuali: un solo start = un solo addebito
     startBtn?.addEventListener("click", startAvatarOnce);
     stopBtn?.addEventListener("click",  stopAvatar);
-
-    // Nessun auto-start all’onload (evita consumi involontari)
     showPlaceholder();
   </script>
 </body>

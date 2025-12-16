@@ -63,8 +63,9 @@ if (typeof body.context_id === "string" && body.context_id.trim().length > 0) {
       });
     }
 
-    const session_id = data?.session_id;
-    const session_token = data?.session_token;
+    const session_id = data?.data?.session_id || data?.session_id;
+const session_token = data?.data?.session_token || data?.session_token;
+
 
     if (!session_id || !session_token) {
       return res.status(500).json({ error: "missing_session_fields", upstream: data });

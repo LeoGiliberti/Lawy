@@ -26,16 +26,26 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         // minimo indispensabile; poi lo rendiamo parametrico se vuoi
-        mode: "FULL",
-        avatar_id: req.body?.avatar_id || req.query?.avatar_id || null,
-        avatar_persona: {
-          // questi 3 campi sono richiesti nel quickstart per FULL mode
-          voice_id: req.body?.voice_id || null,
-          context_id: req.body?.context_id || null,
-          language: req.body?.language || "en",
-        },
-      }),
-    });
+      const payload = {
+  mode: "FULL",
+  avatar_id: req.body?.avatar_id ?? null,
+  avatar_persona: {
+    voice_id: req.body?.voice_id ?? null,
+    context_id: req.body?.context_id ?? null,
+    language: req.body?.language ?? "it",
+  },
+};
+
+// ...fetch...
+
+if (!r.ok) {
+  return res.status(r.status).json({
+    error: "liveavatar_upstream_error",
+    sent: payload,
+    upstream: data
+  });
+}
+
 
     const text = await r.text();
     let data;

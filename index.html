@@ -138,15 +138,17 @@ const LIVEAVATAR_CONTEXT_ID = "f92a4dd7-80aa-47b6-b46b-b89913a477f4";
 let LiveAvatarSDK = null;
 
 async function loadHeygenSdk() {
-  const mod = await import("/api/heygen-sdk");
-  console.log("LiveAvatar SDK exports:", mod);
-
-  // prendiamo il default o il modulo intero
+  // Import diretto dal CDN (così tutte le dipendenze vengono risolte dal CDN, non da Vercel)
+  const mod = await import("https://esm.sh/@heygen/liveavatar-web-sdk@0.0.10?bundle&target=es2020");
   LiveAvatarSDK = mod.default || mod;
 
-  if (!LiveAvatarSDK) throw new Error("sdk_load_failed");
-}
+  if (!LiveAvatarSDK) {
+    console.error("LiveAvatar SDK exports:", mod);
+    throw new Error("sdk_load_failed");
+  }
 
+  console.log("LiveAvatar SDK loaded:", LiveAvatarSDK);
+}
 
     // ======= CHAT UI =======
     function scrollToBottom(){ chatEl.scrollTop = chatEl.scrollHeight; }

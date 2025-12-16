@@ -216,7 +216,9 @@ async function loadHeygenSdk() {
   voice_id: LIVEAVATAR_VOICE_ID,
   context_id: LIVEAVATAR_CONTEXT_ID,
   language: "it"
-});
+})
+   });
+      
       const j = await r.json();
       if (!r.ok || !j?.token) {
         console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);

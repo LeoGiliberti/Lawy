@@ -89,9 +89,6 @@
       .avatar-wrap, .chat{ height:auto; }
     }
   </style>
-
-  <!-- Carico la SDK UMD dal TUO dominio (proxy) -->
-  <script src="/api/heygen-sdk"></script>
 </head>
 <body>
   <div class="app">
@@ -135,6 +132,35 @@ const LIVEAVATAR_CONTEXT_ID = "f92a4dd7-80aa-47b6-b46b-b89913a477f4";
     const startBtn = $("startAvatar"), stopBtn = $("stopAvatar");
     const history = [];
     let avatar = null;
+    let StreamingAvatar = null;
+    let StreamingEvents = null;
+
+async function loadHeygenSdk() {
+  const mod = await import("/api/heygen-sdk");
+
+  // Possibili forme:
+  // 1) export const StreamingAvatar = ...
+  // 2) export default StreamingAvatar
+  // 3) export default { StreamingAvatar, StreamingEvents, ... }
+  StreamingAvatar =
+    mod.StreamingAvatar ||
+    mod.default?.StreamingAvatar ||
+    mod.default ||
+    null;
+
+  StreamingEvents =
+    mod.StreamingEvents ||
+    mod.default?.StreamingEvents ||
+    null;
+
+  if (!StreamingAvatar) {
+    console.error("SDK module exports:", mod);
+    throw new Error("sdk_load_failed");
+  }
+
+  console.log("SDK loaded ok:", { StreamingAvatar, StreamingEvents });
+}
+
 
     // ======= CHAT UI =======
     function scrollToBottom(){ chatEl.scrollTop = chatEl.scrollHeight; }
@@ -202,26 +228,26 @@ const LIVEAVATAR_CONTEXT_ID = "f92a4dd7-80aa-47b6-b46b-b89913a477f4";
     // ======= AVATAR START/STOP (LiveAvatar + fallback Interactive) =======
     async function startAvatarOnce() {
       try{
+        setStatus("Carico SDK…");
+        await loadHeygenSdk();
+
         setStatus("Richiesta token…");
         const token = await getToken();
 
-        // la SDK UMD è caricata in <head> da /api/heygen-sdk
-        if (!window.StreamingAvatar) throw new Error("sdk_not_loaded_umd");
-
         setStatus("Creo sessione…");
-        const a = new window.StreamingAvatar({ token });
+        const a = new StreamingAvatar({ token });
 
-        a.on(window.StreamingEvents?.STREAM_READY || "STREAM_READY", (ev) => {
+        a.on(StreamingEvents?.STREAM_READY || "STREAM_READY", (ev) => {
           phEl.style.display = "none";
           videoEl.srcObject = ev.detail;
           videoEl.play();
           videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once:true });
           setStatus("Avatar pronto.");
         });
-        a.on(window.StreamingEvents?.STREAM_DISCONNECTED || "STREAM_DISCONNECTED", () => {
+        a.on(StreamingEvents?.STREAM_DISCONNECTED || "STREAM_DISCONNECTED", () => {
           setStatus("Connessione chiusa."); showPlaceholder();
         });
-        a.on(window.StreamingEvents?.ERROR || "ERROR", (e) => {
+        a.on(StreamingEvents?.ERROR || "ERROR", (e) => {
           console.error("STREAM_ERROR", e); setStatus("Errore di streaming."); showPlaceholder();
         });
 

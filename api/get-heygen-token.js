@@ -26,15 +26,19 @@ export default async function handler(req, res) {
   }
 
   // Payload per LiveAvatar
-  const payload = {
-    mode: "FULL",
-    avatar_id: body.avatar_id ?? null,
-    avatar_persona: {
-      voice_id: body.voice_id ?? null,
-      context_id: body.context_id ?? null,
-      language: body.language ?? "it",
-    },
-  };
+ const payload = {
+  mode: "FULL",
+  avatar_id: body.avatar_id ?? null,
+  avatar_persona: {
+    voice_id: body.voice_id ?? null,
+    language: body.language ?? "it",
+  },
+};
+
+// aggiungi context_id solo se è una stringa non vuota
+if (typeof body.context_id === "string" && body.context_id.trim().length > 0) {
+  payload.avatar_persona.context_id = body.context_id.trim();
+}
 
   try {
     const r = await fetch("https://api.liveavatar.com/v1/sessions/token", {

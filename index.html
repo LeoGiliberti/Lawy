@@ -207,25 +207,25 @@ async function loadHeygenSdk() {
     qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
     // ======= TOKEN =======
-    async function getToken() {
-      const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-  avatar_id: HEYGEN_AVATAR_ID,
-  voice_id: LIVEAVATAR_VOICE_ID,
-  context_id: LIVEAVATAR_CONTEXT_ID,
-  language: "it"
-})
-   });
-      
-      const j = await r.json();
-      if (!r.ok || !j?.token) {
-        console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);
-        throw new Error("token_error");
-      }
-      return j.token;
-    }
+async function getToken() {
+  const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      avatar_id: HEYGEN_AVATAR_ID,
+      voice_id: LIVEAVATAR_VOICE_ID,
+      context_id: LIVEAVATAR_CONTEXT_ID,
+      language: "it"
+    })
+  });
+
+  const j = await r.json();
+  if (!r.ok || !j?.token) {
+    console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);
+    throw new Error("token_error");
+  }
+  return j.token;
+}
 
     // ======= AVATAR START/STOP (LiveAvatar + fallback Interactive) =======
     async function startAvatarOnce() {

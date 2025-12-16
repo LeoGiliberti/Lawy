@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const r = await fetch("https://api.heygen.com/v1/streaming.create_token", {
       method: "POST",
       headers: {
-        "X-Api-Key": process.env.HEYGEN_API_KEY,       // <-- deve esistere in Vercel
+        "X-Api-Key": process.env. HEYGEN_API_KEY,       // <-- deve esistere in Vercel
         "Content-Type": "application/json"
       },
       body: JSON.stringify({})                         // POST JSON, anche vuoto

@@ -71,7 +71,12 @@ if (typeof body.context_id === "string" && body.context_id.trim().length > 0) {
     }
 
     res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.status(200).json({ session_id, session_token });
+    return res.status(200).json({
+  token: session_token,     // <-- ALIAS per compatibilità col frontend
+  session_id,
+  session_token
+});
+
   } catch (e) {
     return res.status(500).json({
       error: "function_exception",

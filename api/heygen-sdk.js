@@ -1,15 +1,13 @@
 // /api/heygen-sdk.js
-// Serve una versione ESM della SDK, adatta a `import()`
+// Proxy ESM per LiveAvatar Web SDK (adatto a import() nel browser)
 export default async function handler(req, res) {
-  const v = "2.1.0";
+  const v = "0.0.10"; // versione nota del pacchetto LiveAvatar Web SDK
 
   const cdnList = [
-    // 1) jsDelivr ESM conversion (molto spesso risolve "exports is not defined")
-    `https://cdn.jsdelivr.net/npm/@heygen/streaming-avatar@${v}/+esm`,
-    // 2) esm.sh (altra fonte ESM)
-    `https://esm.sh/@heygen/streaming-avatar@${v}?target=es2020`,
-    // 3) esm.run (altra fonte ESM)
-    `https://esm.run/@heygen/streaming-avatar@${v}`,
+    `https://esm.sh/@heygen/liveavatar-web-sdk@${v}?target=es2020`,
+    `https://esm.run/@heygen/liveavatar-web-sdk@${v}`,
+    // fallback senza pin (ultima)
+    `https://esm.sh/@heygen/liveavatar-web-sdk?target=es2020`,
   ];
 
   for (const url of cdnList) {
@@ -23,7 +21,7 @@ export default async function handler(req, res) {
       res.setHeader("Access-Control-Allow-Origin", "*");
       return res.status(200).send(js);
     } catch {
-      // prova il prossimo CDN
+      // prova il prossimo
     }
   }
 

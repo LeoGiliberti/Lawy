@@ -135,32 +135,20 @@ const LIVEAVATAR_CONTEXT_ID = "f92a4dd7-80aa-47b6-b46b-b89913a477f4";
     let StreamingAvatar = null;
     let StreamingEvents = null;
 
+let LiveAvatarSDK = null;
+
 async function loadHeygenSdk() {
   const mod = await import("/api/heygen-sdk");
+  console.log("LiveAvatar SDK exports:", mod);
 
-  // Possibili forme:
-  // 1) export const StreamingAvatar = ...
-  // 2) export default StreamingAvatar
-  // 3) export default { StreamingAvatar, StreamingEvents, ... }
-  StreamingAvatar =
-    mod.StreamingAvatar ||
-    mod.default?.StreamingAvatar ||
-    mod.default ||
-    null;
+  // prendiamo il default o il modulo intero
+  LiveAvatarSDK = mod.default || mod;
 
-  StreamingEvents =
-    mod.StreamingEvents ||
-    mod.default?.StreamingEvents ||
-    null;
-
-  if (!StreamingAvatar) {
-    console.error("SDK module exports:", mod);
-    throw new Error("sdk_load_failed");
-  }
+  if (!LiveAvatarSDK) throw new Error("sdk_load_failed");
+}
 
   console.log("SDK loaded ok:", { StreamingAvatar, StreamingEvents });
 }
-
 
     // ======= CHAT UI =======
     function scrollToBottom(){ chatEl.scrollTop = chatEl.scrollHeight; }
@@ -232,6 +220,10 @@ async function getToken() {
       try{
         setStatus("Carico SDK…");
         await loadHeygenSdk();
+        console.log("LiveAvatarSDK loaded:", LiveAvatarSDK);
+        setStatus("SDK LiveAvatar caricato. Guarda console.");
+        return;
+
 
         setStatus("Richiesta token…");
         const token = await getToken();

@@ -185,8 +185,12 @@ const LIVEAVATAR_CONTEXT_ID = "f92a4dd7-80aa-47b6-b46b-b89913a477f4";
       const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}"
-      });
+        body: JSON.stringify({
+  avatar_id: HEYGEN_AVATAR_ID,
+  voice_id: LIVEAVATAR_VOICE_ID,
+  context_id: LIVEAVATAR_CONTEXT_ID,
+  language: "it"
+});
       const j = await r.json();
       if (!r.ok || !j?.token) {
         console.error("[DTI/Avatar] TOKEN FAIL", r.status, j);

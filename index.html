@@ -115,6 +115,53 @@
       </div>
       <div class="row">
         <button id="startAvatar" type="button">Avvia avatar</button>
+        <button id="btnSpeak">Parla (test)</button>
+
+<script type="module">
+  let lkRoom = null;
+
+  async function ensureLiveKitConnected() {
+    // 1) Chiedi a Vercel una nuova sessione (NON riusare vecchi link/token)
+    const r = await fetch("/api/liveavatar-standalone?mode=FULL&language=it");
+    const j = await r.json();
+    if (!j.ok) throw new Error("standalone_failed");
+
+    const livekitUrl = j.livekit_url;
+    // nel tuo JSON hai livekit_client_token_present:true, ma ti serve anche il token vero:
+    // quindi assicurati che standalone restituisca anche livekit_client_token (stringa), non solo "_present".
+    const livekitToken = j.livekit_client_token;
+
+    // 2) Import LiveKit client
+    const lk = await import("https://esm.sh/livekit-client@2.15.7?bundle&target=es2020");
+
+    // 3) Connetti alla room
+    lkRoom = new lk.Room();
+    await lkRoom.connect(livekitUrl, livekitToken);
+
+    return lkRoom;
+  }
+
+  async function speakText(text) {
+    const room = lkRoom || await ensureLiveKitConnected();
+
+    // Evento FULL mode: publish su topic "agent-control"
+    const payload = { event_type: "avatar.speak_text", text };
+    const data = new TextEncoder().encode(JSON.stringify(payload));
+
+    room.localParticipant.publishData(data, { topic: "agent-control" });
+  }
+
+  document.getElementById("btnSpeak").addEventListener("click", async () => {
+    try {
+      await speakText("Ciao, questo è un test.");
+      console.log("speak_text inviato");
+    } catch (e) {
+      console.error(e);
+      alert("Errore speak: guarda Console");
+    }
+  });
+</script>
+
         <button id="stopAvatar"  type="button" style="background:#2f3b4f;color:#dfe7ef;">Stop</button>
         <input id="q" type="text" placeholder="Scrivi qui…" autocomplete="off" />
         <button id="ask" type="button">Invia</button>

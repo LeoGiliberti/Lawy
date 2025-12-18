@@ -110,6 +110,7 @@ export default async function handler(req, res) {
       language,
       session_token: sessionToken,
       livekit_url: livekitUrl,
+      livekit_client_token: livekitClientToken,
       livekit_client_token_present: true,
       livekit_test_url: livekitTestUrl
     });

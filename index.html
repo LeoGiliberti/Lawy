@@ -15,10 +15,6 @@
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      <div style="position:fixed;top:0;left:0;background:yellow;padding:6px;z-index:9999;font-weight:bold;">
-      VERSIONE INDEX: TEST-XYZ
-      </div>
-      
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
       display:flex; align-items:center; justify-content:center;
@@ -95,6 +91,9 @@
   </style>
 </head>
 <body>
+    <div style="position:fixed;top:0;left:0;background:yellow;padding:6px;z-index:999999;font-weight:700;color:#000;">
+      VERSIONE INDEX: TEST-XYZ
+    </div>
   <div class="app">
     <!-- SINISTRA: AVATAR -->
     <section class="panel avatar-wrap">
@@ -117,63 +116,7 @@
         <button id="startAvatar" type="button">Avvia avatar</button>
         <button id="btnSpeak" type="button" disabled>Parla (test)</button>
 
-<script type="module">
-  let lkRoom = null;
-
-async function connectLiveKitOnce() {
-  if (lkRoom) return lkRoom;
-
-  // 1) Chiedi sessione a Vercel
-  const r = await fetch("/api/liveavatar-standalone?mode=FULL&language=it");
-  const j = await r.json();
-  if (!j.ok) throw new Error("standalone_failed");
-
-  const livekitUrl = j.livekit_url;
-  const livekitToken = j.livekit_client_token;
-
-  // 2) Import LiveKit client da CDN (bundle)
-  const lk = await import("https://esm.sh/livekit-client@2.15.7?bundle&target=es2020");
-
-  // 3) Connetti
-  lkRoom = new lk.Room();
-  await lkRoom.connect(livekitUrl, livekitToken);
-
-  return lkRoom;
-}
-
-async function speakText(text) {
-  const room = await connectLiveKitOnce();
-
-  // Evento FULL mode: topic "agent-control"
-  const payload = { event_type: "avatar.speak_text", text };
-  const data = new TextEncoder().encode(JSON.stringify(payload));
-
-  room.localParticipant.publishData(data, { topic: "agent-control" });
-}
-const btnSpeak = document.getElementById("btnSpeak");
-
-btnSpeak.addEventListener("click", async () => {
-  try {
-    await speakText("Ciao, questo è un test.");
-    console.log("speak_text inviato");
-  } catch (e) {
-    console.error("Speak failed:", e);
-    alert("Errore speak: guarda Console");
-  }
-});
-
-  document.getElementById("btnSpeak").addEventListener("click", async () => {
-    try {
-      await speakText("Ciao, questo è un test.");
-      console.log("speak_text inviato");
-    } catch (e) {
-      console.error(e);
-      alert("Errore speak: guarda Console");
-    }
-  });
-</script>
-
-        <button id="stopAvatar"  type="button" style="background:#2f3b4f;color:#dfe7ef;">Stop</button>
+<button id="stopAvatar"  type="button" style="background:#2f3b4f;color:#dfe7ef;">Stop</button>
         <input id="q" type="text" placeholder="Scrivi qui…" autocomplete="off" />
         <button id="ask" type="button">Invia</button>
       </div>
@@ -192,6 +135,39 @@ const LIVEAVATAR_CONTEXT_ID = "f92a4dd7-80aa-47b6-b46b-b89913a477f4";
     const statusLine = $("statusLine");
     const videoEl = $("avatarVideo"), phEl = $("avatarPh");
     const startBtn = $("startAvatar"), stopBtn = $("stopAvatar");
+    const btnSpeak = $("btnSpeak");
+
+    // ======= LIVEKIT (FULL mode control via agent-control) =======
+    let lkRoom = null;
+    let currentSessionToken = null;
+
+    async function connectLiveKitOnce() {
+      if (lkRoom) return lkRoom;
+
+      setStatus("Creo sessione LiveAvatar...");
+      const r = await fetch(`/api/liveavatar-standalone?mode=FULL&language=it`);
+      const j = await r.json();
+      if (!j.ok) throw new Error("standalone_failed");
+
+      const livekitUrl = j.livekit_url;
+      const livekitToken = j.livekit_client_token;
+      currentSessionToken = j.session_token || null;
+
+      setStatus("Connetto LiveKit...");
+      const lk = await import("https://esm.sh/livekit-client@2.15.7?bundle&target=es2020");
+      lkRoom = new lk.Room();
+      await lkRoom.connect(livekitUrl, livekitToken);
+
+      return lkRoom;
+    }
+
+    async function speakText(text) {
+      const room = await connectLiveKitOnce();
+      const payload = { event_type: "avatar.speak_text", text };
+      const data = new TextEncoder().encode(JSON.stringify(payload));
+      room.localParticipant.publishData(data, { topic: "agent-control" });
+    }
+
     const history = [];
     let avatar = null;
     let StreamingAvatar = null;
@@ -281,81 +257,65 @@ async function getToken() {
     // ======= AVATAR START/STOP (LiveAvatar + fallback Interactive) =======
     async function startAvatarOnce() {
       try{
-        setStatus("Carico SDK…");
-        await loadHeygenSdk();
-        console.log("LiveAvatarSDK loaded:", LiveAvatarSDK);
-        setStatus("SDK LiveAvatar caricato. Guarda console.");
-        return;
-
-
-        setStatus("Richiesta token…");
-        const token = await getToken();
-
-        setStatus("Creo sessione…");
-        const a = new StreamingAvatar({ token });
-
-        btnSpeak.disabled = false;
-
-        a.on(StreamingEvents?.STREAM_READY || "STREAM_READY", (ev) => {
-          phEl.style.display = "none";
-          videoEl.srcObject = ev.detail;
-          videoEl.play();
-          videoEl.addEventListener("click", () => { videoEl.muted = false; }, { once:true });
-          setStatus("Avatar pronto.");
-        });
-        a.on(StreamingEvents?.STREAM_DISCONNECTED || "STREAM_DISCONNECTED", () => {
-          setStatus("Connessione chiusa."); showPlaceholder();
-        });
-        a.on(StreamingEvents?.ERROR || "ERROR", (e) => {
-          console.error("STREAM_ERROR", e); setStatus("Errore di streaming."); showPlaceholder();
-        });
-
-        const startOpts = { quality: "low", avatarId: HEYGEN_AVATAR_ID };
-        console.log("[LiveAvatar] start ->", startOpts);
-
-        if (typeof a.startSession === "function") {
-          await a.startSession(startOpts);         // LiveAvatar
-        } else if (typeof a.createStartAvatar === "function") {
-          await a.createStartAvatar(startOpts);    // Interactive fallback
-        } else {
-          throw new Error("no_start_method_found");
-        }
-        avatar = a;
+        // Colleghiamo la sessione LiveAvatar via LiveKit (standalone)
+        await connectLiveKitOnce();
+        if (btnSpeak) btnSpeak.disabled = false;
+        setStatus("Avatar connesso. Premi 'Parla (test)'.");
       }catch(e){
         console.error("Start failed:", e);
-        setStatus("Impossibile avviare l’avatar (vedi console).");
-        showPlaceholder();
+        setStatus("Impossibile connettere l’avatar (vedi console).");
       }
     }
 
+
     async function stopAvatar() {
       try{
-        if (avatar?.stopSession) await avatar.stopSession(); // LiveAvatar
-        if (avatar?.stopAvatar)  await avatar.stopAvatar();  // Interactive
-        if (avatar?.stop)        await avatar.stop();
-      }catch(_){}
-      avatar = null;
+        if (lkRoom) {
+          lkRoom.disconnect();
+          lkRoom = null;
+        }
+        if (currentSessionToken) {
+          await fetch(`/api/liveavatar-stop`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ session_token: currentSessionToken })
+          });
+          currentSessionToken = null;
+        }
+      }catch(e){
+        console.error("stopAvatar failed:", e);
+      }
       showPlaceholder();
+      if (btnSpeak) btnSpeak.disabled = true;
       setStatus("Avatar fermato.");
     }
+
 
     function showPlaceholder(){
       try{ videoEl.srcObject = null; phEl.style.display = "flex"; }catch(_){}
     }
 
-    // Espone speak (LiveAvatar -> speak_text, fallback Interactive -> speak)
+    // Espone speak (LiveAvatar FULL mode via LiveKit data events)
     window.avatarSpeak = async (text) => {
-      if (!avatar || !text) return;
-      try {
-        if (typeof avatar.speak_text === "function") {
-          await avatar.speak_text({ text, language: "it" });   // LiveAvatar
-        } else if (typeof avatar.speak === "function") {
-          await avatar.speak({ text });                         // Interactive
-        }
-      } catch (e) { console.error("speak error:", e); }
+      if (!text) return;
+      try { await speakText(text); }
+      catch (e) { console.error("avatarSpeak failed:", e); }
     };
 
-    startBtn?.addEventListener("click", startAvatarOnce);
+
+        // Bottone test: fa dire una frase all'avatar
+    btnSpeak?.addEventListener("click", async () => {
+      console.log("CLICK Speak");
+      try {
+        await speakText("Ciao, questo è un test.");
+        console.log("speak_text inviato");
+      } catch (e) {
+        console.error("Speak failed:", e);
+        alert("Errore speak: guarda Console");
+      }
+    });
+
+startBtn?.addEventListener("click", startAvatarOnce);
     stopBtn?.addEventListener("click",  stopAvatar);
     showPlaceholder();
   </script>

@@ -256,6 +256,7 @@ async function loadHeygenSdk() {
     askBtn.addEventListener("click", ask);
     qEl.addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); ask(); } });
 
+    
     // ======= TOKEN =======
 async function getToken() {
   const r = await fetch(`${API_BASE}/api/get-heygen-token`, {
